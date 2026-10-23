@@ -8,12 +8,13 @@
 - Paper tab in the dashboard: account value vs start, total P/L, win rate, trades, open positions, last 20 trades.
 - alerts workflow has a concurrency group so two runs can't both open the same position.
 - Matrix-style re-skin (CSS and `.streamlit/config.toml` only): near-black background, neon green #00FF41 accent, dim green borders, monospace headings and numbers, green glow on the hero card and selected tab. BUY green, SELL red, HOLD amber unchanged. No logic or layout changes.
+- Old ntfy alerts are off (`OLD_ALERTS = False` in alerter.py; code kept). Every paper-bot action now pushes to Ty's topic only: each buy, each sell (stop loss, target hit, end-of-day close) and each skipped or rejected buy (once per ticker and reason per day, so repeats don't spam).
 
 ## Current task
 None.
 
 ## Tests
-- No automated test suite. Watchlist checked headlessly with Streamlit AppTest (stubbed store and price data): add, signal, remove, per-user save all pass. Same for trade remove, clear-all confirm/cancel/delete. Paper bot: `alerter.py --once` run against a fake Supabase and fake prices, plus rule tests (sizing, 20% cap, costs, stop/target/gap/ASX-close exits, duplicate guards, failed-load safety) and the Paper tab, all passing. Not run against real Supabase or live prices.
+- No automated test suite. Watchlist checked headlessly with Streamlit AppTest (stubbed store and price data): add, signal, remove, per-user save all pass. Same for trade remove, clear-all confirm/cancel/delete. Paper bot: `alerter.py --once` run against a fake Supabase and fake prices, plus rule tests (sizing, 20% cap, costs, stop/target/gap/ASX-close exits, duplicate guards, failed-load safety) and the Paper tab, all passing. Notifications: unit-tested for every action type, plus a real `alerter.py --once` run with ntfy calls recorded (3 pushes, all to Ty). Not run against real Supabase, real ntfy or live prices.
 
 ## Decisions
 - Watchlist signal reuses `scan_long` / `long_word`, cached 15 minutes. Tickers without 200 days of data show HOLD with "No data".
