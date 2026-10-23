@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
+from shadow import decide as shadow_decide, holding_key
 from store import get, put
 
 TOPICS = {"Ty": os.environ.get("NTFY_TOPIC_TY", ""), "Nathan": os.environ.get("NTFY_TOPIC_NATHAN", "")}
@@ -65,7 +66,7 @@ def asx_status():
     return is_open, mins_left
 
 
-def trend_word(ticker):
+def trend_info(ticker):
     df = yf.download(ticker, period="1y", interval="1d", progress=False)
     if df is None or len(df) < 200:
         return None, None
@@ -83,6 +84,13 @@ def trend_word(ticker):
     score += 2 if ma50 > ma50_old else 0
     score += 1 if price > month_ago else 0
     score += 2 if (3 <= off_high <= 12 and price > ma200) else 0
+    return score, price
+
+
+def trend_word(ticker):
+    score, price = trend_info(ticker)
+    if score is None:
+        return None, None
     word = "BUY" if score >= 7 else "HOLD" if score >= 4 else "SELL"
     return word, price
 
@@ -266,6 +274,139 @@ def paper_manage(acct, asx_open, mins_left):
             print("Paper manage failed:", pos.get("ticker"), e)
 
 
+# ---------- Shadow bot: paper mirror of Ty's real holdings. Reads them, never writes them. No real orders. ----------
+LONG_LIST = ("BHP.AX, CBA.AX, CSL.AX, WES.AX, WOW.AX, TLS.AX, MQG.AX, XRO.AX, REA.AX, COL.AX, "
+             "QBE.AX, TCL.AX, GMG.AX, RIO.AX, ALL.AX, WTC.AX, NAB.AX, ANZ.AX, WBC.AX, FMG.AX")
+SHADOW_OWNER = "Ty"
+SHADOW_FEE = 10.0
+SHADOW_SLIP = 0.001
+
+
+def shadow_load():
+    try:
+        log = get("system", "shadow_log", None)
+    except Exception as e:
+        print("Shadow log load failed:", e)
+        return None  # never replace a saved log with a fresh one
+    log = log or {}
+    for k in ("sold", "sales", "buys"):
+        log.setdefault(k, [])
+    return log
+
+
+def shadow_save(log):
+    try:
+        put("system", "shadow_log", log)
+        return True
+    except Exception as e:
+        print("Shadow log save failed:", e)
+        return False
+
+
+def best_long_idea(exclude):
+    """Highest-scoring BUY (score 7+) on the Long term list; the first one wins a tie."""
+    best = None
+    for t in [x.strip() for x in LONG_LIST.split(",")]:
+        if t == exclude:
+            continue
+        try:
+            score, _ = trend_info(t)
+        except Exception:
+            continue
+        if score is not None and score >= 7 and (best is None or score > best[1]):
+            best = (t, score)
+    return best
+
+
+def shadow_reinvest(log, sale):
+    """Paper-buy the best Long term idea with a sale's proceeds, less $10 brokerage and 0.1% slippage."""
+    idea = best_long_idea(sale["ticker"])
+    if idea is None:
+        if not sale.get("no_idea_sent"):
+            sale["no_idea_sent"] = True
+            if shadow_save(log):
+                paper_notify(f"SHADOW: no BUY idea after selling {sale['ticker']}",
+                             f"No Long term idea scores BUY right now. Holding ${sale['proceeds']:,.2f} paper cash until one does.", "hourglass")
+        return
+    ticker, score = idea
+    px = last_price(ticker)
+    fill = px * (1 + SHADOW_SLIP)
+    shares = math.floor((sale["proceeds"] - SHADOW_FEE) / fill)
+    if shares < 1:
+        sale["reinvested"], sale["note"] = True, "Proceeds too small to buy one share."
+        if shadow_save(log):
+            paper_notify(f"SHADOW: no buy after selling {sale['ticker']}", sale["note"], "warning")
+        return
+    cost = shares * fill + SHADOW_FEE
+    buy = {"ticker": ticker, "shares": shares, "price": fill, "price_px": px, "brokerage": SHADOW_FEE, "cost": cost,
+           "costs": SHADOW_FEE + shares * (fill - px), "score": score, "mark": px, "sale_key": sale["key"],
+           "date": datetime.now(MEL).strftime("%Y-%m-%d %H:%M")}
+    log["buys"].append(buy)
+    sale["reinvested"] = True
+    if not shadow_save(log):
+        log["buys"].pop()
+        sale["reinvested"] = False
+        return
+    paper_notify(f"SHADOW BUY {ticker}", f"Paper bought {shares} at ${p(fill)} (cost ${cost:,.2f} incl. $10 brokerage). "
+                 f"Best Long term idea, score {score}. Bought with the proceeds from selling {sale['ticker']}.", "green_circle", "high")
+
+
+def shadow_check_holding(log, h):
+    tk = h.get("ticker")
+    qty, paid = float(h.get("qty") or 0), float(h.get("paid") or 0)
+    if not tk or qty <= 0 or paid <= 0:
+        return  # nothing to judge without what was paid
+    key = holding_key(h)
+    if key in log["sold"]:
+        return  # already paper-sold once; never log the same sale twice
+    score, _ = trend_info(tk)
+    if score is None:
+        return
+    price = last_price(tk)
+    dec = shadow_decide(qty, paid, price, score, h.get("bought"))
+    if dec["word"] != "SELL":
+        return
+    sale = {"key": key, "ticker": tk, "qty": qty, "paid": paid, "bought": h.get("bought"), "price": price,
+            "date": datetime.now(MEL).strftime("%Y-%m-%d %H:%M"), "reason": dec["reason"], "costs": SHADOW_FEE,
+            "proceeds": qty * price - SHADOW_FEE, "gain": dec["gain"], "pct": dec["pct"], "reinvested": False}
+    log["sold"].append(key)
+    log["sales"].append(sale)
+    if not shadow_save(log):
+        log["sold"].pop()
+        log["sales"].pop()
+        return
+    paper_notify(f"SHADOW SELL {tk}", f"Paper sold {qty:g} at ${p(price)}. {dec['reason']}", "red_circle", "urgent")
+
+
+def shadow_run():
+    log = shadow_load()
+    if log is None:
+        return
+    try:
+        holdings = get(SHADOW_OWNER, "holdings", [])  # read only
+    except Exception as e:
+        print("Shadow holdings load failed:", e)
+        return
+    for h in holdings:
+        try:
+            shadow_check_holding(log, h)
+        except Exception as e:
+            print("Shadow check failed:", h.get("ticker"), e)
+    for sale in log["sales"]:
+        if not sale.get("reinvested"):
+            try:
+                shadow_reinvest(log, sale)
+            except Exception as e:
+                print("Shadow buy failed:", sale.get("ticker"), e)
+    for b in log["buys"]:
+        try:
+            b["mark"] = last_price(b["ticker"])
+        except Exception:
+            pass
+    if log["sales"] or log["buys"]:
+        shadow_save(log)
+
+
 def check_user(sent, user, topic, asx_open, mins_left):
     # 1. Things you own
     for h in get(user, "holdings", []):
@@ -312,6 +453,7 @@ def check():
             check_user(sent, user, topic, asx_open, mins_left)
 
         paper_manage(paper, asx_open, mins_left)
+        shadow_run()
 
         # 3. New BUY setups, sent to everyone
         names = []

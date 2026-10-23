@@ -8,6 +8,7 @@ import json
 import urllib.request
 from streamlit_autorefresh import st_autorefresh
 from store import get, put
+from shadow import decide, holding_key
 
 st.set_page_config(page_title="Hub", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
@@ -103,6 +104,10 @@ def save_json(name, data):
 pots = load_json("pots", {"day": 0.0, "long": 0.0, "crypto": 0.0})
 holdings = load_json("holdings", [])
 watchlist = load_json("watchlist", [])
+try:
+    shadow_log = get("system", "shadow_log", None)
+except Exception:
+    shadow_log = None
 log_df = pd.DataFrame(load_json("trades", []), columns=COLS)
 for c in ["entry", "shares", "dollars"]:
     log_df[c] = pd.to_numeric(log_df[c], errors="coerce")
@@ -309,10 +314,17 @@ for h in holdings:
         r = scan_long(h["ticker"])
     except Exception:
         r = None
-    w = long_word(r["score"]) if r else "HOLD"
-    hold_info.append((h, r, w))
+    paid = float(h.get("paid") or 0)
+    dec = decide(h["qty"], paid, r["price"], r["score"], h.get("bought")) if r else None
+    if r and paid > 0:  # shadow-bot rules: SELL on a downtrend with a gain over 2%, or a loss worse than 8%
+        w = "SELL" if dec["word"] == "SELL" else "BUY" if r["score"] >= 7 else "HOLD"
+        why = dec["reason"]
+    else:
+        w = long_word(r["score"]) if r else "HOLD"
+        why = "Trending down. Think about selling."
+    hold_info.append((h, r, w, dec))
     if w == "SELL":
-        alerts.append(("SELL", h["ticker"], "Trending down. Think about selling."))
+        alerts.append(("SELL", h["ticker"], why))
 for _, r in pnl.iterrows():
     w, why = trade_word(r, asx_closing)
     if w == "SELL":
@@ -363,20 +375,34 @@ with port:
     with st.expander("Add something you own"):
         new_t = st.text_input("Code (like BHP, or BTC-USD for crypto)")
         new_q = st.number_input("How many", min_value=0.0, value=0.0)
+        new_paid = st.number_input("What you paid per share ($)", min_value=0.0, value=0.0)
+        new_when = st.date_input("Bought on", value=datetime.now(MEL).date())
         if st.button("Add it", type="primary") and new_t.strip() and new_q > 0:
             tk = new_t.strip().upper()
             if "." not in tk and "-" not in tk:
                 tk += ".AX"
-            holdings.append({"ticker": tk, "qty": new_q})
+            item = {"ticker": tk, "qty": new_q, "bought": new_when.isoformat()}
+            if new_paid > 0:
+                item["paid"] = new_paid
+            holdings.append(item)
             save_json("holdings", holdings)
             st.rerun()
     if not holdings:
         st.markdown('<div class="card sub">Nothing added yet.</div>', unsafe_allow_html=True)
     plain = {"BUY": "Looking strong. Fine to buy more.", "HOLD": "Keep it.", "SELL": "Trending down. Think about selling."}
-    for i, (h, r, w) in enumerate(hold_info):
-        if r:
+    sold_keys = {s["key"]: s for s in (shadow_log or {}).get("sales", [])}
+    for i, (h, r, w, dec) in enumerate(hold_info):
+        if r and float(h.get("paid") or 0) > 0:
+            body = (line("Paid", f"${fp(float(h['paid']))}") + line("Now", f"${fp(r['price'])}") + line("Worth", f"${r['price'] * h['qty']:,.0f}")
+                    + line("Gain / loss", f'{money(dec["gain"])} <span class="sub">({dec["pct"]:+.1f}%)</span>'))
+            body += f'<div class="sub" style="margin-top:8px">{dec["reason"]}</div>'
+            done = sold_keys.get(holding_key(h))
+            if done:
+                body += f'<div class="sub" style="margin-top:6px">The shadow bot already paper-sold this on {done["date"]}.</div>'
+        elif r:
             body = line("Price", f"${fp(r['price'])}") + line("Worth", f"${r['price'] * h['qty']:,.0f}")
             body += f'<div class="sub" style="margin-top:8px">{plain[w]} ({r["why"]})</div>'
+            body += '<div class="sub" style="margin-top:6px">Remove it and add it again with what you paid to see gain or loss and the bot\'s view.</div>'
         else:
             body = '<div class="sub" style="margin-top:6px">No data. Check the code.</div>'
         card(f'{h["ticker"]} <span class="sub">x{h["qty"]:g}</span>', w, body)
@@ -415,6 +441,43 @@ with port:
                 st.rerun()
     with st.expander("Full trade history"):
         st.dataframe(log_df, use_container_width=True)
+
+    # ---------- Shadow bot ----------
+    st.markdown("#### Shadow bot")
+    st.markdown('<div class="sub">Pretend money only. It shadows Ty\'s holdings, never touches the real ones and never places orders.</div>', unsafe_allow_html=True)
+    sh_sales, sh_buys = (shadow_log or {}).get("sales", []), (shadow_log or {}).get("buys", [])
+    if not sh_sales and not sh_buys:
+        st.markdown('<div class="card sub">No shadow moves yet. It sells when a holding turns down with a gain over 2%, or loses more than 8%.</div>', unsafe_allow_html=True)
+    else:
+        def px_now(tk, fallback):
+            return live_price(tk) or fallback
+        sale_pl = sum(s["gain"] for s in sh_sales)
+        buy_pl = sum(b["shares"] * px_now(b["ticker"], b.get("mark", b["price"])) - b["cost"] for b in sh_buys)
+        brokerage = sum(s.get("costs", 10.0) for s in sh_sales) + sum(b.get("brokerage", 10.0) for b in sh_buys)
+        sh_boxes = (f'<div class="card" style="flex:1; margin:0"><div class="sub">Total paper profit or loss</div>{money(sale_pl + buy_pl)}</div>'
+                    f'<div class="card" style="flex:1; margin:0"><div class="sub">Brokerage paid</div><b>${brokerage:,.0f}</b></div>'
+                    f'<div class="card" style="flex:1; margin:0"><div class="sub">Moves</div><b>{len(sh_sales)} sold, {len(sh_buys)} bought</b></div>')
+        st.markdown(f'<div class="row" style="align-items:stretch">{sh_boxes}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub" style="margin:6px 0 10px">Sales count the profit made at the sale. Buys count how they are doing now, after costs.</div>', unsafe_allow_html=True)
+        waiting = sum(s["proceeds"] for s in sh_sales if not s.get("reinvested"))
+        if waiting > 0:
+            st.markdown(f'<div class="card sub">Paper cash waiting: ${waiting:,.2f}. No Long term idea scores BUY right now.</div>', unsafe_allow_html=True)
+        sold_name = {s["key"]: s["ticker"] for s in sh_sales}
+        for s in reversed(sh_sales):
+            now_p = px_now(s["ticker"], s["price"])
+            since = (now_p - s["price"]) / s["price"] * 100
+            body = (line("Sold", f"${fp(s['price'])} x{s['qty']:g}") + line("Date", s["date"])
+                    + line("Gain / loss at the sale", f'{money(s["gain"])} <span class="sub">({s["pct"]:+.1f}%)</span>')
+                    + line("Price now", f'${fp(now_p)} <span class="sub">({since:+.1f}% since the sale)</span>')
+                    + f'<div class="sub" style="margin-top:8px">{s["reason"]}</div>')
+            card(s["ticker"], "SELL", body)
+        for b in reversed(sh_buys):
+            now_p = px_now(b["ticker"], b.get("mark", b["price"]))
+            pl = b["shares"] * now_p - b["cost"]
+            body = (line("Bought", f"${fp(b['price'])} x{b['shares']:g}") + line("Date", b["date"]) + line("Now", f"${fp(now_p)}")
+                    + line("Gain / loss since", f'{money(pl)} <span class="sub">({pl / b["cost"] * 100:+.1f}%)</span>')
+                    + f'<div class="sub" style="margin-top:8px">Best Long term idea (score {b["score"]}), bought with the proceeds from selling {sold_name.get(b["sale_key"], "a holding")}.</div>')
+            card(b["ticker"], "BUY", body)
 
 # ---------- Watchlist ----------
 with watch:
