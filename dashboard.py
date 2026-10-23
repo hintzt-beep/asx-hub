@@ -24,19 +24,26 @@ st.markdown("""
 header[data-testid="stHeader"] {background: transparent;}
 .block-container {padding: 1.2rem 1rem 4rem;}
 @media (min-width: 768px) {.block-container {padding: 2rem 3rem 4rem;}}
-.card {background: #151A23; border: 1px solid #232A36; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
-.hero {background: linear-gradient(135deg, #7C5CFF40, #00D9FF26); border: 1px solid #7C5CFF66; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
-.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1;}
-.sub {color: #8A94A6; font-size: 0.8rem;}
+.card {background: #060B07; border: 1px solid #0F3D1A; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
+.hero {background: linear-gradient(135deg, #00FF4122, #00FF410A); border: 1px solid #00FF4166; box-shadow: 0 0 18px #00FF4126; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
+.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #E6FFEA; text-shadow: 0 0 10px #00FF4166; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+.sub {color: #6FA37C; font-size: 0.8rem;}
 .row {display: flex; justify-content: space-between; align-items: center; gap: 8px;}
 .word {padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em;}
 .chips {display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px;}
-.chip {flex: 0 0 auto; background: #151A23; border: 1px solid #232A36; border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;}
+.chip {flex: 0 0 auto; background: #060B07; border: 1px solid #0F3D1A; border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;}
 .dot {display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;}
-.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700;}
+.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #0F5A24;}
+.stButton button:hover {border-color: #00FF41; box-shadow: 0 0 10px #00FF4144;}
+.stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {color: #021006;}
 button[data-baseweb="tab"] {font-size: 0.95rem; font-weight: 700;}
-div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px;}
+button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: #00FF41; text-shadow: 0 0 8px #00FF4199;}
+div[data-baseweb="tab-highlight"] {background-color: #00FF41; box-shadow: 0 0 8px #00FF41;}
+div[data-baseweb="tab-border"] {background-color: #0F3D1A;}
+div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #0F3D1A;}
+[data-testid="stExpander"] details {border: 1px solid #0F3D1A; border-radius: 12px;}
 h4 {margin: 14px 0 6px;}
+h1, h2, h3, h4, .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
 """, unsafe_allow_html=True)
 
