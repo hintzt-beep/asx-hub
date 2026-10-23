@@ -76,6 +76,7 @@ def save_json(name, data):
 
 pots = load_json("pots", {"day": 0.0, "long": 0.0, "crypto": 0.0})
 holdings = load_json("holdings", [])
+watchlist = load_json("watchlist", [])
 log_df = pd.DataFrame(load_json("trades", []), columns=COLS)
 for c in ["entry", "shares", "dollars"]:
     log_df[c] = pd.to_numeric(log_df[c], errors="coerce")
@@ -194,6 +195,13 @@ def live_price(ticker):
     except Exception:
         return None
 
+@st.cache_data(ttl=900)
+def watch_signal(ticker):
+    try:
+        return scan_long(ticker)
+    except Exception:
+        return None
+
 @st.cache_data(ttl=21600)
 def celeb_trades():
     req = urllib.request.Request(CELEB_URL, headers={"User-Agent": "Mozilla/5.0"})
@@ -292,7 +300,7 @@ if top_r.button("Log out"):
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-home, port, ideas, celebs = st.tabs(["Home", "Portfolio", "Ideas", "Celebs"])
+home, port, watch, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Ideas", "Celebs"])
 
 # ---------- Home ----------
 with home:
@@ -359,6 +367,36 @@ with port:
         card(r["ticker"], w, body + f'<div class="sub" style="margin-top:8px">{why}</div>')
     with st.expander("Full trade history"):
         st.dataframe(log_df, use_container_width=True)
+
+# ---------- Watchlist ----------
+with watch:
+    st.markdown("#### Watchlist")
+    with st.expander("Add a ticker"):
+        wt = st.text_input("Code (like BHP, or BTC-USD for crypto)", key="watch_in")
+        if st.button("Add to watchlist", type="primary"):
+            tk = wt.strip().upper()
+            if tk and "." not in tk and "-" not in tk:
+                tk += ".AX"
+            if tk and tk not in watchlist:
+                watchlist.append(tk)
+                save_json("watchlist", watchlist)
+                st.rerun()
+    if not watchlist:
+        st.markdown('<div class="card sub">Nothing on your watchlist yet.</div>', unsafe_allow_html=True)
+    plain_w = {"BUY": "Looking strong.", "HOLD": "Nothing to do.", "SELL": "Trending down."}
+    for i, tk in enumerate(watchlist):
+        r = watch_signal(tk)
+        if r:
+            w = long_word(r["score"])
+            body = line("Price", f"${fp(r['price'])}")
+            body += f'<div class="sub" style="margin-top:8px">{plain_w[w]} ({r["why"]})</div>'
+        else:
+            w, body = "HOLD", '<div class="sub" style="margin-top:6px">No data. Check the code.</div>'
+        card(tk, w, body)
+        if st.button(f"Remove {tk}", key=f"wrm{i}"):
+            watchlist.pop(i)
+            save_json("watchlist", watchlist)
+            st.rerun()
 
 # ---------- Ideas ----------
 with ideas:
