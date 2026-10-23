@@ -9,7 +9,7 @@ import urllib.request
 from streamlit_autorefresh import st_autorefresh
 from store import get, put
 
-st.set_page_config(page_title="Hub", page_icon="📈", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Hub", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
 USERS = {"Ty": os.environ.get("TY_PASSWORD", "change-me-ty"),
          "Nathan": os.environ.get("NATHAN_PASSWORD", "change-me-nathan")}
@@ -22,7 +22,8 @@ st.markdown("""
 <style>
 #MainMenu, footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
-.block-container {max-width: 900px; padding: 1.2rem 1rem 4rem;}
+.block-container {padding: 1.2rem 1rem 4rem;}
+@media (min-width: 768px) {.block-container {padding: 2rem 3rem 4rem;}}
 .card {background: #151A23; border: 1px solid #232A36; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
 .hero {background: linear-gradient(135deg, #7C5CFF40, #00D9FF26); border: 1px solid #7C5CFF66; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
 .big {font-size: 2.2rem; font-weight: 800; line-height: 1.1;}
