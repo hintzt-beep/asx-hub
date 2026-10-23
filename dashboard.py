@@ -18,38 +18,57 @@ GREEN, RED, AMBER, GREY = "#22C55E", "#EF4444", "#F59E0B", "#8A94A6"
 WORD_COLOR = {"BUY": GREEN, "SELL": RED, "HOLD": AMBER}
 MEL = ZoneInfo("Australia/Melbourne")
 
+# Original angular robot-bear head, one glowing red eye (inline SVG).
+BEAR_SVG = ('<svg width="56" height="56" viewBox="0 0 64 64" fill="none" stroke-linejoin="miter" role="img" aria-label="Robot bear">'
+            '<polygon points="6,13 12,6 22,6 27,13 22,22 10,22" fill="#16181C" stroke="#3A3F47" stroke-width="1.6"/>'
+            '<polygon points="58,13 52,6 42,6 37,13 42,22 54,22" fill="#16181C" stroke="#3A3F47" stroke-width="1.6"/>'
+            '<polygon points="12,13 15,10 19,10 21,14 18,18 13,18" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1"/>'
+            '<polygon points="52,13 49,10 45,10 43,14 46,18 51,18" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1"/>'
+            '<polygon points="13,22 22,12 42,12 51,22 51,43 41,55 23,55 13,43" fill="#1B1E23" stroke="#3A3F47" stroke-width="1.8"/>'
+            '<polyline points="26,17 32,20 38,17" stroke="#3A3F47" stroke-width="1.4"/>'
+            '<polygon points="19,27 29,29 28,33 19,32" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1.2"/>'
+            '<polygon points="45,27 35,29 36,33 45,32" fill="#FF2A3A" style="filter: drop-shadow(0 0 4px #FF2A3A)"/>'
+            '<polygon points="23,38 41,38 44,50 20,50" fill="#111317" stroke="#3A3F47" stroke-width="1.4"/>'
+            '<polygon points="28,40 36,40 32,45" fill="#C1121F"/>'
+            '<path d="M24 47H28M36 47H40M32 45V50" stroke="#3A3F47" stroke-width="1.3"/>'
+            '<circle cx="16.5" cy="40" r="1.3" fill="#3A3F47"/><circle cx="47.5" cy="40" r="1.3" fill="#3A3F47"/></svg>')
+APP_NAME = "IRONPAW"
+
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
 #MainMenu, footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
 .block-container {padding: 1.2rem 1rem 4rem;}
 @media (min-width: 768px) {.block-container {padding: 2rem 3rem 4rem;}}
-.card {background: #060B07; border: 1px solid #0F3D1A; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
-.hero {background: linear-gradient(135deg, #00FF4122, #00FF410A); border: 1px solid #00FF4166; box-shadow: 0 0 18px #00FF4126; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
-.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #E6FFEA; text-shadow: 0 0 10px #00FF4166; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-.sub {color: #6FA37C; font-size: 0.8rem;}
+.card {background: #111216; border: 1px solid #3A3F47; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
+.hero {background: linear-gradient(135deg, #C1121F2E, #C1121F0F); border: 1px solid #C1121F99; box-shadow: 0 0 20px #C1121F4D; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
+.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #F2F4F7; text-shadow: 0 0 10px #C1121F80; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+.brand {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif; font-weight: 900; font-size: 1.15rem; letter-spacing: 0.18em; color: #F2F4F7; text-shadow: 0 0 8px #C1121F99;}
+.sub {color: #A7ADB6; font-size: 0.8rem;}
 .row {display: flex; justify-content: space-between; align-items: center; gap: 8px;}
 .word {padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em;}
 .chips {display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px;}
-.chip {flex: 0 0 auto; background: #060B07; border: 1px solid #0F3D1A; border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;}
+.chip {flex: 0 0 auto; background: #111216; border: 1px solid #3A3F47; border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;}
 .dot {display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;}
-.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #0F5A24;}
-.stButton button:hover {border-color: #00FF41; box-shadow: 0 0 10px #00FF4144;}
-.stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {color: #021006;}
+.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #3A3F47; box-shadow: 0 0 8px #C1121F33;}
+.stButton button:hover {border-color: #C1121F; box-shadow: 0 0 14px #C1121F80;}
+.stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {color: #FFFFFF;}
 button[data-baseweb="tab"] {font-size: 0.95rem; font-weight: 700;}
-button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: #00FF41; text-shadow: 0 0 8px #00FF4199;}
-div[data-baseweb="tab-highlight"] {background-color: #00FF41; box-shadow: 0 0 8px #00FF41;}
-div[data-baseweb="tab-border"] {background-color: #0F3D1A;}
-div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #0F3D1A;}
-[data-testid="stExpander"] details {border: 1px solid #0F3D1A; border-radius: 12px;}
+button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: #FF4D5A; text-shadow: 0 0 8px #C1121FCC;}
+div[data-baseweb="tab-highlight"] {background-color: #C1121F; box-shadow: 0 0 8px #C1121F;}
+div[data-baseweb="tab-border"] {background-color: #3A3F47;}
+div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #3A3F47;}
+[data-testid="stExpander"] details {border: 1px solid #3A3F47; border-radius: 12px;}
 h4 {margin: 14px 0 6px;}
-h1, h2, h3, h4, .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
+h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif !important; letter-spacing: 0.04em;}
+.card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
 """, unsafe_allow_html=True)
 
 # ---------- Login ----------
 if "user" not in st.session_state:
-    st.markdown('<div class="hero"><div class="big">Hub</div><div class="sub">Your money, made simple.</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Your money, made simple.</div></div>{BEAR_SVG}</div></div>', unsafe_allow_html=True)
     who = st.radio("Who are you?", list(USERS), horizontal=True)
     pw = st.text_input("Password", type="password")
     if st.button("Log in", type="primary"):
@@ -312,7 +331,7 @@ home, port, watch, paper, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchli
 # ---------- Home ----------
 with home:
     total = sum(pots.values())
-    st.markdown(f'<div class="hero"><div class="sub">Hi {USER}</div><div class="big">${total:,.0f}</div>'
+    st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Hi {USER}</div></div>{BEAR_SVG}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
     st.markdown("#### Needs you")
