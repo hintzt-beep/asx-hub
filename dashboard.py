@@ -300,7 +300,7 @@ if top_r.button("Log out"):
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-home, port, watch, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Ideas", "Celebs"])
+home, port, watch, paper, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Paper", "Ideas", "Celebs"])
 
 # ---------- Home ----------
 with home:
@@ -419,6 +419,46 @@ with watch:
             watchlist.pop(i)
             save_json("watchlist", watchlist)
             st.rerun()
+
+# ---------- Paper ----------
+with paper:
+    st.markdown("#### Paper trading")
+    st.markdown('<div class="sub">Pretend money only. No real orders are ever placed.</div>', unsafe_allow_html=True)
+    try:
+        acct = get("system", "paper_account", None)
+    except Exception:
+        acct = None
+    if not acct:
+        st.markdown('<div class="card sub">The paper account has not started yet. It makes its first pretend buy when a BUY alert fires.</div>', unsafe_allow_html=True)
+    else:
+        pstart, ppos, pclosed = acct.get("start", 10000.0), acct.get("positions", []), acct.get("closed", [])
+        pvalue = acct["cash"] + sum(x["shares"] * x.get("mark", x["entry"]) for x in ppos)
+        pwins = sum(1 for x in pclosed if x["pnl"] > 0)
+        prate = f"{pwins / len(pclosed) * 100:.0f}%" if pclosed else "n/a"
+        st.markdown(f'<div class="hero"><div class="sub">Account value</div><div class="big">${pvalue:,.2f}</div>'
+                    f'<div class="sub">started with ${pstart:,.0f}</div><div style="margin-top:10px">Total profit or loss {money(pvalue - pstart)}</div></div>', unsafe_allow_html=True)
+        pboxes = "".join(f'<div class="card" style="flex:1; margin:0"><div class="sub">{k}</div><b>{v}</b></div>'
+                         for k, v in [("Win rate", prate), ("Trades", len(pclosed)), ("Cash free", f"${acct['cash']:,.0f}")])
+        st.markdown(f'<div class="row" style="align-items:stretch">{pboxes}</div>', unsafe_allow_html=True)
+        st.markdown("#### Open positions")
+        if not ppos:
+            st.markdown('<div class="card sub">Nothing open right now.</div>', unsafe_allow_html=True)
+        for x in ppos:
+            now_p = x.get("mark", x["entry"])
+            body = (line("Bought at", f"${fp(x['entry'])} x{x['shares']:g}") + line("Now", f"${fp(now_p)}")
+                    + line("Gain / loss so far", money((now_p - x["entry"]) * x["shares"]))
+                    + f'<div class="sub" style="margin-top:8px">Keep it. Sells if it falls to ${fp(x["stop"])} or rises to ${fp(x["target"])}.</div>')
+            card(x["ticker"], "HOLD", body)
+        st.markdown("#### Last 20 trades")
+        if not pclosed:
+            st.markdown('<div class="card sub">No finished trades yet.</div>', unsafe_allow_html=True)
+        why_sold = {"stop": "Sold because it hit the stop.", "target": "Sold because it hit the target.",
+                    "ASX close": "Sold before the ASX closed."}
+        for x in reversed(pclosed[-20:]):
+            body = (line("Bought at", f"${fp(x['entry'])}") + line("Sold at", f"${fp(x['exit'])}") + line("Shares", f"{x['shares']:g}")
+                    + line("Costs", f"${x['costs']:,.2f}") + line("Profit / loss", money(x["pnl"]))
+                    + f'<div class="sub" style="margin-top:8px">{why_sold.get(x["reason"], "Sold.")}</div>')
+            card(x["ticker"], "SELL", body)
 
 # ---------- Ideas ----------
 with ideas:

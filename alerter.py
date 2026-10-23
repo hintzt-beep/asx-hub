@@ -1,8 +1,9 @@
+import math
 import os
 import sys
 import time
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
@@ -112,6 +113,118 @@ def last_price(ticker):
     return float(clean(df)["Close"].iloc[-1])
 
 
+# ---------- Paper trading: pretend money only. No real orders, ever. ----------
+PAPER_START = 10000.0
+PAPER_FEE = 10.0       # brokerage on each buy and each sell
+PAPER_SLIP = 0.001     # 0.1% against us on every fill
+PAPER_RISK = 0.01      # loss at the stop = 1% of account value
+PAPER_MAX_POS = 0.20   # max 20% of the account in one position
+
+
+def paper_load():
+    try:
+        acct = get("system", "paper_account", None)
+    except Exception as e:
+        print("Paper account load failed:", e)
+        return None  # never replace a saved account with a fresh one
+    if not acct:
+        acct = {"start": PAPER_START, "cash": PAPER_START, "positions": [], "closed": [], "signals": {}}
+    today = datetime.now(MEL).strftime("%Y-%m-%d")
+    if acct.get("signals", {}).get("day") != today:
+        acct["signals"] = {"day": today, "keys": []}
+    return acct
+
+
+def paper_save(acct):
+    if acct is None:
+        return
+    try:
+        put("system", "paper_account", acct)
+    except Exception as e:
+        print("Paper account save failed:", e)
+
+
+def paper_value(acct):
+    return acct["cash"] + sum(x["shares"] * x.get("mark", x["entry"]) for x in acct["positions"])
+
+
+def paper_open(acct, ticker, entry, stop, target, asx_open, mins_left):
+    if acct is None:
+        return
+    try:
+        is_asx = ticker.endswith(".AX")
+        if is_asx and (not asx_open or mins_left is None or mins_left < 15):
+            return  # would be force-closed straight away
+        key = f"buy-{ticker}"  # one paper buy per ticker per day, like the alerts
+        if key in acct["signals"]["keys"] or any(x["ticker"] == ticker for x in acct["positions"]):
+            return
+        fill = entry * (1 + PAPER_SLIP)
+        risk = fill - stop * (1 - PAPER_SLIP)  # loss per share if the stop fills
+        if risk <= 0:
+            return
+        shares = min((paper_value(acct) * PAPER_RISK - 2 * PAPER_FEE) / risk,
+                     paper_value(acct) * PAPER_MAX_POS / fill,
+                     (acct["cash"] - PAPER_FEE) / fill)
+        shares = math.floor(shares) if is_asx else math.floor(shares * 1e6) / 1e6
+        if shares <= 0:
+            return
+        acct["cash"] -= shares * fill + PAPER_FEE
+        acct["positions"].append({"ticker": ticker, "type": "day" if is_asx else "crypto",
+                                  "opened": datetime.now(timezone.utc).isoformat(), "entry_px": entry,
+                                  "entry": fill, "shares": shares, "stop": stop, "target": target, "mark": entry})
+        acct["signals"]["keys"].append(key)
+        print(datetime.now(MEL).strftime("%H:%M"), f"PAPER BUY {ticker}: {shares:g} at ${p(fill)}")
+    except Exception as e:
+        print("Paper open failed:", ticker, e)
+
+
+def paper_close(acct, pos, px, reason):
+    fill = px * (1 - PAPER_SLIP)
+    proceeds = pos["shares"] * fill - PAPER_FEE
+    slip = pos["shares"] * (pos["entry"] - pos["entry_px"]) + pos["shares"] * (px - fill)
+    pnl = proceeds - (pos["shares"] * pos["entry"] + PAPER_FEE)
+    acct["cash"] += proceeds
+    acct["positions"].remove(pos)
+    acct["closed"].append({"ticker": pos["ticker"], "entry": round(pos["entry"], 6), "exit": round(fill, 6),
+                           "shares": pos["shares"], "costs": round(2 * PAPER_FEE + slip, 2),
+                           "pnl": round(pnl, 2), "reason": reason, "opened": pos["opened"],
+                           "closed": datetime.now(timezone.utc).isoformat()})
+    print(datetime.now(MEL).strftime("%H:%M"), f"PAPER SELL {pos['ticker']} ({reason}): P/L ${pnl:,.2f}")
+
+
+def paper_hit(pos, now_p):
+    """Stop or target touched since the position opened? Stop wins if both in one bar."""
+    df = yf.download(pos["ticker"], period="5d", interval="5m", progress=False)
+    if df is not None and len(df):
+        df = clean(df)
+        for _, r in df[df.index > pd.Timestamp(pos["opened"])].iterrows():
+            if float(r["Low"]) <= pos["stop"]:
+                return "stop", min(pos["stop"], float(r["Open"]))
+            if float(r["High"]) >= pos["target"]:
+                return "target", max(pos["target"], float(r["Open"]))
+    if now_p <= pos["stop"]:
+        return "stop", now_p
+    if now_p >= pos["target"]:
+        return "target", now_p
+    return None
+
+
+def paper_manage(acct, asx_open, mins_left):
+    if acct is None:
+        return
+    for pos in list(acct["positions"]):
+        try:
+            now_p = last_price(pos["ticker"])
+            pos["mark"] = now_p
+            hit = paper_hit(pos, now_p)
+            if hit:
+                paper_close(acct, pos, hit[1], hit[0])
+            elif pos["type"] == "day" and (not asx_open or (mins_left is not None and mins_left < 15)):
+                paper_close(acct, pos, now_p, "ASX close")
+        except Exception as e:
+            print("Paper manage failed:", pos.get("ticker"), e)
+
+
 def check_user(sent, user, topic, asx_open, mins_left):
     # 1. Things you own
     for h in get(user, "holdings", []):
@@ -151,10 +264,13 @@ def check_user(sent, user, topic, asx_open, mins_left):
 def check():
     sent = load_sent()
     asx_open, mins_left = asx_status()
+    paper = paper_load()
     users = {u: t for u, t in TOPICS.items() if t}
     try:
         for user, topic in users.items():
             check_user(sent, user, topic, asx_open, mins_left)
+
+        paper_manage(paper, asx_open, mins_left)
 
         # 3. New BUY setups, sent to everyone
         names = []
@@ -166,6 +282,7 @@ def check():
                 s = day_setup(t)
                 if s:
                     entry, stop, target = s
+                    paper_open(paper, t, entry, stop, target, asx_open, mins_left)
                     for user, topic in users.items():
                         send_once(sent, f"{user}-buy-{t}", topic, f"BUY {t}",
                                   f"Breaking out. Buy at about ${p(entry)}. Sell if it drops to ${p(stop)} or rises to ${p(target)}.",
@@ -174,6 +291,7 @@ def check():
                 print("Scan failed:", t, e)
     finally:
         put("system", "alerts_sent", sent)
+        paper_save(paper)
 
 
 if __name__ == "__main__":
