@@ -361,10 +361,32 @@ with port:
     st.markdown("#### Bought today")
     if len(pnl) == 0:
         st.markdown('<div class="card sub">Nothing bought today.</div>', unsafe_allow_html=True)
-    for _, r in pnl.iterrows():
+    for idx, r in pnl.iterrows():
         w, why = trade_word(r, asx_closing)
         body = line("Paid", f"${fp(float(r['entry']))}") + line("Now", f"${fp(float(r['now']))}") + line("Gain / loss", money(r["gl"]))
         card(r["ticker"], w, body + f'<div class="sub" style="margin-top:8px">{why}</div>')
+        if st.button(f"Remove {r['ticker']}", key=f"rmt{idx}"):
+            rows = load_json("trades", [])
+            hit = next((j for j, x in enumerate(rows) if x.get("time") == r["time"] and x.get("ticker") == r["ticker"]), None)
+            if hit is not None:
+                rows.pop(hit)
+                save_json("trades", rows)
+            st.rerun()
+    if len(log_df):
+        if not st.session_state.get("confirm_clear"):
+            if st.button("Clear all test trades"):
+                st.session_state.confirm_clear = True
+                st.rerun()
+        else:
+            st.warning(f"This deletes all {len(log_df)} trades in your history and frees the money they used. It cannot be undone.")
+            c1, c2 = st.columns(2)
+            if c1.button("Yes, delete all", type="primary"):
+                save_json("trades", [])
+                st.session_state.confirm_clear = False
+                st.rerun()
+            if c2.button("Cancel"):
+                st.session_state.confirm_clear = False
+                st.rerun()
     with st.expander("Full trade history"):
         st.dataframe(log_df, use_container_width=True)
 
