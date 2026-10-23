@@ -22,7 +22,7 @@ st.markdown("""
 <style>
 #MainMenu, footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
-.block-container {max-width: 520px; padding: 1.2rem 1rem 4rem;}
+.block-container {max-width: 900px; padding: 1.2rem 1rem 4rem;}
 .card {background: #151A23; border: 1px solid #232A36; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
 .hero {background: linear-gradient(135deg, #7C5CFF40, #00D9FF26); border: 1px solid #7C5CFF66; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
 .big {font-size: 2.2rem; font-weight: 800; line-height: 1.1;}
