@@ -32,8 +32,12 @@ def daily_view(mkt, t, need=60):
 
 
 def holding_words(a):
-    names = [x["ticker"].replace(".AX", "") for x in a["positions"]]
-    return f"I'm holding {', '.join(names)}" if names else "I'm all in cash right now"
+    names = [x["ticker"].replace(".AX", "").replace("-AUD", "") for x in a["positions"]]
+    if names:
+        return f"I'm holding {', '.join(names)}"
+    if a.get("saving"):
+        return "I'm holding cash and saving up: at this account size the fees (brokerage) would eat too much of any trade"
+    return "I'm all in cash right now"
 
 
 def are(n):
@@ -61,12 +65,15 @@ class Bot:
             if sig:
                 found.append((t, sig))
         found.sort(key=lambda x: -x[1].get("rank", 0))
+        a["saving"] = False
         for t, sig in found:
             if not self.may_buy(a, now):
                 break
             if buy(rc, a, name, t, sig["px"], sig["stop"], sig["reason"], now, events, frac=sig.get("frac", 0.25),
                    risk=sig.get("risk"), target=sig.get("target"), trail=sig.get("trail"), extra=sig.get("extra")):
                 a["last_buy_day"] = today(now)
+            elif any(k in a.get("last_reject", "") for k in ("limit 2%", "too small", "not enough cash")):
+                a["saving"] = True  # a setup was there, but fees would be too big for a trade this account can make
         if a.get("diary", {}).get("day") != today(now):
             note = "I'm benched by the loss brake (down 15% from my peak), so no new buys until I recover or the next scorecard. " if a["benched"] else ""
             a["diary"] = {"day": today(now), "text": note + self.diary(a, seen, len(found))}
