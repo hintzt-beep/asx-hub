@@ -221,6 +221,7 @@ def tick(rc, doc, mkt, now, asx_open, events):
     """One trading pass. The stocks race only trades while the ASX is open and prices are fresh."""
     if not rc["crypto"] and not (asx_open and mkt.fresh(rc["bench"], now)):
         return False
+    doc["last_trading_day"] = now.astimezone(MEL).date().isoformat()
     accts = doc["accounts"]
     for name, a in accts.items():
         for pos in list(a["positions"]):
@@ -284,6 +285,9 @@ def daily_summary(notify, now):
     state = get("system", "race_summary_state", None) or {}
     if state.get("day") == mel.date().isoformat():
         return
+    stocks = get("system", ALL_RACES["stocks"]["doc"], None) or {}
+    if stocks.get("last_trading_day") != mel.date().isoformat():
+        return  # the ASX did not trade today (public holiday), so no summary
     parts = []
     for rc in RACES.values():
         doc = get("system", rc["doc"], None)
