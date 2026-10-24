@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import os
 import json
@@ -9,6 +9,9 @@ import urllib.request
 from streamlit_autorefresh import st_autorefresh
 from store import get, put
 from shadow import decide, holding_key
+import plotly.graph_objects as go
+import race
+from bots import STYLES
 
 st.set_page_config(page_title="Hub", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
@@ -62,6 +65,17 @@ div[data-baseweb="tab-border"] {background-color: #3A3F47;}
 div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #3A3F47;}
 [data-testid="stExpander"] details {border: 1px solid #3A3F47; border-radius: 12px;}
 h4 {margin: 14px 0 6px;}
+.lb-row {display: grid; grid-template-columns: 26px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 6px; border-bottom: 1px solid #3A3F47;}
+.lb-row:last-child {border-bottom: none;}
+.lb-row.lead {background: #C1121F1F; border-radius: 10px;}
+.lb-rank, .lb-val {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+.lb-val {font-weight: 800;}
+.champ {font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; color: #F5C542; background: #F5C5421F; border: 1px solid #F5C54266; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;}
+.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 12px;}
+.grid .card {margin: 0;}
+.label {color: #A7ADB6; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
+.trade {border-top: 1px solid #3A3F47; padding-top: 6px; margin-top: 6px;}
+.diary {font-style: italic; font-size: 0.85rem;}
 h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif !important; letter-spacing: 0.04em;}
 .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
@@ -82,12 +96,6 @@ if "user" not in st.session_state:
 USER = st.session_state.user
 st_autorefresh(interval=120000, key="refresh")
 
-DAY_LIST = ("BHP.AX, CBA.AX, CSL.AX, WBC.AX, NAB.AX, ANZ.AX, FMG.AX, WES.AX, MQG.AX, PLS.AX, "
-            "WDS.AX, TLS.AX, RIO.AX, WOW.AX, GMG.AX, STO.AX, TCL.AX, QBE.AX, ALL.AX, COL.AX, "
-            "NST.AX, EVN.AX, MIN.AX, IGO.AX, LYC.AX, PDN.AX, BOE.AX, XRO.AX, WTC.AX, REA.AX")
-LONG_LIST = ("BHP.AX, CBA.AX, CSL.AX, WES.AX, WOW.AX, TLS.AX, MQG.AX, XRO.AX, REA.AX, COL.AX, "
-             "QBE.AX, TCL.AX, GMG.AX, RIO.AX, ALL.AX, WTC.AX, NAB.AX, ANZ.AX, WBC.AX, FMG.AX")
-CRYPTO_LIST = "BTC-USD, ETH-USD, SOL-USD, XRP-USD, BNB-USD, ADA-USD, DOGE-USD, AVAX-USD, LINK-USD, DOT-USD, LTC-USD, BCH-USD"
 CELEB_URL = "https://www.bargo.ai/free-apis/congress/v1/trades?limit=40"
 COLS = ["time", "type", "ticker", "entry", "shares", "dollars", "score", "stop", "target"]
 POT_OF = {"day": "day", "long": "long", "crypto_day": "crypto", "crypto_long": "crypto"}
@@ -102,7 +110,6 @@ def save_json(name, data):
 
 pots = load_json("pots", {"day": 0.0, "long": 0.0, "crypto": 0.0})
 holdings = load_json("holdings", [])
-watchlist = load_json("watchlist", [])
 try:
     shadow_log = get("system", "shadow_log", None)
 except Exception:
@@ -160,28 +167,6 @@ def market_status(tz, oh, om, ch, cm):
         nxt = (nxt.replace(tzinfo=None) + timedelta(days=1)).replace(tzinfo=zone)
     return False, nxt.timestamp() - now.timestamp()
 
-def scan_day(ticker, pot, whole):
-    df = yf.download(ticker, period="1d", interval="5m", progress=False)
-    if df is None or len(df) < 12:
-        return None
-    df = clean(df)
-    last, prior = df.iloc[-1], df.iloc[:-1]
-    day_high = float(prior["High"].max())
-    avg_vol = float(prior["Volume"].mean())
-    if avg_vol <= 0:
-        return None
-    entry = float(last["Close"])
-    if entry > day_high and float(last["Volume"]) / avg_vol > 2:
-        stop = float(prior["Low"].tail(6).min())
-        risk = entry - stop
-        if risk <= 0:
-            return None
-        qty = min(pot * 0.01 / risk, pot * 0.20 / entry)
-        qty = int(qty) if whole else round(qty, 6)
-        return {"ticker": ticker, "entry": entry, "stop": stop, "target": entry + 2 * risk,
-                "shares": qty, "dollars": qty * entry, "score": round(float(last["Volume"]) / avg_vol, 1)}
-    return None
-
 @st.cache_data(ttl=900)
 def scan_long(ticker):
     df = yf.download(ticker, period="1y", interval="1d", progress=False)
@@ -225,13 +210,6 @@ def live_price(ticker):
     except Exception:
         return None
 
-@st.cache_data(ttl=900)
-def watch_signal(ticker):
-    try:
-        return scan_long(ticker)
-    except Exception:
-        return None
-
 @st.cache_data(ttl=21600)
 def celeb_trades():
     req = urllib.request.Request(CELEB_URL, headers={"User-Agent": "Mozilla/5.0"})
@@ -253,12 +231,6 @@ def pick(d, *keys):
             return v
     return ""
 
-def log_trade(row):
-    row = {k: row.get(k, "") for k in COLS}
-    rows = load_json("trades", [])
-    rows.append(row)
-    save_json("trades", rows)
-
 def trade_word(r, asx_closing):
     now_p = float(r["now"])
     stop = pd.to_numeric(r.get("stop"), errors="coerce")
@@ -270,16 +242,6 @@ def trade_word(r, asx_closing):
     if r["type"] == "day" and asx_closing:
         return "SELL", "ASX closes soon. Close the day trade."
     return "HOLD", "Still on track."
-
-def bought_row(key, kind, ticker, price, qty, whole, stop="", target=""):
-    with st.expander(f"I bought {ticker}"):
-        fill = st.number_input("Price I paid ($)", min_value=0.0, value=float(price), format="%.4f", key=f"f{key}")
-        got = st.number_input("How many", min_value=0.0, value=float(qty), step=1.0 if whole else 0.0001,
-                              format="%.0f" if whole else "%.6f", key=f"q{key}")
-        if st.button("Save", key=f"s{key}", type="primary"):
-            log_trade({"time": datetime.now(MEL).strftime("%Y-%m-%d %H:%M"), "type": kind, "ticker": ticker,
-                       "entry": fill, "shares": got, "dollars": round(fill * got, 2), "stop": stop, "target": target})
-            st.success("Saved. You'll get a ping when it's time to sell.")
 
 # ---------- Markets ----------
 now = datetime.now(MEL)
@@ -329,7 +291,113 @@ if top_r.button("Log out"):
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-home, port, watch, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Ideas", "Celebs"])
+race_tab, home, port, celebs = st.tabs(["Race", "Home", "Portfolio", "Celebs"])
+
+# ---------- Race ----------
+MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
+
+
+def mood(a, now_utc):
+    if a.get("benched"):
+        return "Benched"
+    last = next((t for t in reversed(a["trades"]) if t["side"] in ("BUY", "SELL")), None)
+    if last and now_utc - datetime.fromisoformat(last["time"]) < timedelta(hours=2):
+        return "Buying" if last["side"] == "BUY" else "Selling"
+    return "Holding" if a["positions"] else "Waiting"
+
+
+def mood_pill(m):
+    c = MOOD_COLOR[m]
+    return f'<span class="word" style="background:{c}22; color:{c}; border:1px solid {c}66;">{m.upper()}</span>'
+
+
+def champ_badge(n, champ):
+    return ' <span class="champ">CHAMPION</span>' if n == champ else ""
+
+
+def bot_card(n, a, champ, now_utc):
+    sells = [t for t in a["trades"] if t["side"] == "SELL"]
+    wins = sum(1 for t in sells if t.get("pnl", 0) > 0)
+    rate = f"{wins / len(sells) * 100:.0f}% of {len(sells)}" if sells else "no closed trades"
+    v = race.value(a)
+    pos = "".join(f'<div class="row sub" style="margin-top:4px"><span>{x["ticker"]} x{x["shares"]:g} @ ${fp(x["entry"])}</span>'
+                  f'<span>{money((x["mark"] - x["entry"]) * x["shares"])}</span></div>' for x in a["positions"]) or '<div class="sub">None.</div>'
+    done = {"BUY": "Bought", "SELL": "Sold", "BENCHED": "Benched"}
+    trades = "".join(f'<div class="trade"><div class="row"><b>{done.get(t["side"], t["side"])} {t["ticker"]}</b>'
+                     f'<span class="sub">{datetime.fromisoformat(t["time"]).astimezone(MEL).strftime("%a %d %b %H:%M")}</span></div>'
+                     f'<div class="sub">{t["reason"]}</div></div>' for t in reversed(a["trades"][-3:])) or '<div class="sub">No trades yet.</div>'
+    di = a.get("diary") or {}
+    diary = (f'<div class="diary">{di["text"]}</div>' if di.get("day") == now_utc.astimezone(MEL).date().isoformat()
+             else '<div class="sub">No diary entry yet today.</div>')
+    return (f'<div class="card"><div class="row"><b style="font-size:1.1rem">{n}{champ_badge(n, champ)}</b>{mood_pill(mood(a, now_utc))}</div>'
+            f'<div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
+            + line("Account value", f"${v:,.0f} {money(v - race.START_CASH)}") + line("Open positions", str(len(a["positions"])))
+            + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
+            + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
+
+
+with race_tab:
+    race_pick = st.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
+    rc = next(r for r in race.ALL_RACES.values() if r["name"] == race_pick)
+    now_utc = datetime.now(timezone.utc)
+    rdoc = None
+    if rc["key"] not in race.ENABLED:
+        st.markdown('<div class="card sub">The crypto race is switched off for now: only the ASX race is running.</div>', unsafe_allow_html=True)
+    else:
+        try:
+            rdoc = get("system", rc["doc"], None)
+        except Exception:
+            rdoc = None
+        if not rdoc:
+            st.markdown('<div class="card sub">The race starts on the next bot run.</div>', unsafe_allow_html=True)
+    if rdoc:
+        table = race.standings(rdoc)
+        champ = rdoc.get("champion")
+        st.markdown(f'<div class="sub" style="margin-bottom:6px">Season {rdoc["season"]} · {race.days_left(rdoc, now_utc)} days left · '
+                    f'paper money only, no real orders</div>', unsafe_allow_html=True)
+        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{n}{champ_badge(n, champ)}</span>'
+                       f'<span class="lb-val">${v:,.0f}</span><span>{money(v - race.START_CASH)} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>'
+                       for i, (n, v) in enumerate(table, 1))
+        st.markdown(f'<div class="card">{rows}</div>', unsafe_allow_html=True)
+        hist = rdoc.get("history", [])
+        xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
+        fig = go.Figure()
+        for n, _ in table:
+            fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n))
+        fig.update_layout(height=320, margin=dict(l=8, r=8, t=8, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                          legend=dict(orientation="h", y=-0.15), yaxis=dict(tickprefix="$"))
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.markdown('<div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
+    st.markdown("#### Hall of Fame")
+    try:
+        hof = get("system", "hall_of_fame", None) or []
+    except Exception:
+        hof = []
+    past = [e for e in hof if e.get("race") == rc["key"]]
+    if not past:
+        ends = f" Season {rdoc['season']} ends {race.season_end(rdoc).astimezone(MEL).strftime('%a %d %b')}." if rdoc else ""
+        st.markdown(f'<div class="card sub">No finished seasons yet.{ends}</div>', unsafe_allow_html=True)
+    for e in reversed(past):
+        win = next(x for x in e["standings"] if x["name"] == e["winner"])
+        bench = next((x for x in e["standings"] if x["name"] == race.BENCH), None)
+        when = f'{datetime.fromisoformat(e["start"]).astimezone(MEL).strftime("%d %b")} to {datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}'
+        st.markdown(f'<div class="card"><div class="row"><b style="font-size:1.1rem">Season {e["season"]}</b><span class="champ">{e["winner"].upper()}</span></div>'
+                    + line("Winner", f'{e["winner"]} {money(win["value"] - race.START_CASH)} ({win["pct"]:+.1f}%)')
+                    + (line("Buy and Hold", f'{bench["pct"]:+.1f}%') if bench else "") + line("Dates", when) + '</div>', unsafe_allow_html=True)
+    try:
+        rset = get("system", "race_settings", None) or {}
+    except Exception:
+        rset = None
+    modes = {"trade": "Pings: every trade", "summary": "Pings: daily summary"}
+    if rset is not None:
+        cur = rset.get("pings", "trade")
+        pings = st.radio("Notifications", list(modes), index=list(modes).index(cur), format_func=modes.get, horizontal=True, key="pings")
+        if pings != cur:
+            try:
+                put("system", "race_settings", {**rset, "pings": pings})
+                st.success(f"Saved: {modes[pings]}. Season results are always sent.")
+            except Exception:
+                st.error("Could not save the setting. Try again.")
 
 # ---------- Home ----------
 with home:
@@ -452,78 +520,6 @@ with port:
                     + line("Gain / loss since", f'{money(pl)} <span class="sub">({pl / b["cost"] * 100:+.1f}%)</span>')
                     + f'<div class="sub" style="margin-top:8px">Best Long term idea (score {b["score"]}), bought with the proceeds from selling {sold_name.get(b["sale_key"], "a holding")}.</div>')
             card(b["ticker"], "BUY", body)
-
-# ---------- Watchlist ----------
-with watch:
-    st.markdown("#### Watchlist")
-    with st.expander("Add a ticker"):
-        wt = st.text_input("Code (like BHP, or BTC-USD for crypto)", key="watch_in")
-        if st.button("Add to watchlist", type="primary"):
-            tk = wt.strip().upper()
-            if tk and "." not in tk and "-" not in tk:
-                tk += ".AX"
-            if tk and tk not in watchlist:
-                watchlist.append(tk)
-                save_json("watchlist", watchlist)
-                st.rerun()
-    if not watchlist:
-        st.markdown('<div class="card sub">Nothing on your watchlist yet.</div>', unsafe_allow_html=True)
-    plain_w = {"BUY": "Looking strong.", "HOLD": "Nothing to do.", "SELL": "Trending down."}
-    for i, tk in enumerate(watchlist):
-        r = watch_signal(tk)
-        if r:
-            w = long_word(r["score"])
-            body = line("Price", f"${fp(r['price'])}")
-            body += f'<div class="sub" style="margin-top:8px">{plain_w[w]} ({r["why"]})</div>'
-        else:
-            w, body = "HOLD", '<div class="sub" style="margin-top:6px">No data. Check the code.</div>'
-        card(tk, w, body)
-        if st.button(f"Remove {tk}", key=f"wrm{i}"):
-            watchlist.pop(i)
-            save_json("watchlist", watchlist)
-            st.rerun()
-
-# ---------- Ideas ----------
-with ideas:
-    market = st.radio("Market", ["Shares", "Crypto"], horizontal=True)
-    style = st.radio("Style", ["Today", "Long term"], horizontal=True)
-    crypto, today = market == "Crypto", style == "Today"
-    pot_key = "crypto" if crypto else "day" if today else "long"
-    kind = ("crypto_" if crypto else "") + ("day" if today else "long")
-    names = [x.strip() for x in (CRYPTO_LIST if crypto else DAY_LIST if today else LONG_LIST).split(",")]
-    unit, whole = ("coins", False) if crypto else ("shares", True)
-    key = f"ideas_{kind}"
-    if today and not crypto and not asx_open:
-        st.markdown('<div class="card sub">The ASX is closed. Today ideas work while it is open.</div>', unsafe_allow_html=True)
-    if st.button("Find ideas", type="primary"):
-        found, bar = [], st.progress(0)
-        for i, tk in enumerate(names):
-            try:
-                r = scan_day(tk, cash[pot_key], whole) if today else scan_long(tk)
-                if r and (today or long_word(r["score"]) == "BUY"):
-                    found.append(r)
-            except Exception:
-                pass
-            bar.progress((i + 1) / len(names))
-        bar.empty()
-        st.session_state[key] = sorted(found, key=lambda x: -x["score"])
-    items = st.session_state.get(key)
-    if items == []:
-        st.markdown('<div class="card sub">Nothing worth buying right now. Waiting is fine.</div>', unsafe_allow_html=True)
-    for n, s in enumerate(items or []):
-        if today:
-            body = (line("Buy", f"{s['shares']} {unit} (${s['dollars']:,.0f})") + line("At about", f"${fp(s['entry'])}")
-                    + line("Sell if it drops to", f"${fp(s['stop'])}") + line("Sell if it rises to", f"${fp(s['target'])}"))
-            if s["shares"] == 0:
-                body += '<div class="sub" style="margin-top:8px">Add money to this pot on Home to get a size.</div>'
-            card(s["ticker"], "BUY", body)
-            bought_row(f"{kind}{n}", kind, s["ticker"], s["entry"], s["shares"], whole, s["stop"], s["target"])
-        else:
-            dollars = cash[pot_key] * 0.10
-            qty = int(dollars // s["price"]) if whole else round(dollars / s["price"], 6)
-            body = line("Price", f"${fp(s['price'])}") + line("Put in", f"${qty * s['price']:,.0f} ({qty} {unit})")
-            card(s["ticker"], "BUY", body + f'<div class="sub" style="margin-top:8px">{s["why"].capitalize()}.</div>')
-            bought_row(f"{kind}{n}", kind, s["ticker"], s["price"], qty, whole)
 
 # ---------- Celebs ----------
 with celebs:
