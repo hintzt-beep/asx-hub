@@ -115,7 +115,7 @@ def record(a, side, ticker, price, shares, f, reason, now, **extra):
     return t
 
 
-def buy(rc, a, name, ticker, px, stop, reason, now, events, frac=MAX_POS, risk=None, target=None, trail=None):
+def buy(rc, a, name, ticker, px, stop, reason, now, events, frac=MAX_POS, risk=None, target=None, trail=None, extra=None):
     """Open a position under the shared rules. Returns the trade, or None if a rule says no."""
     if a["benched"] or not px or px <= 0:
         return None
@@ -145,7 +145,7 @@ def buy(rc, a, name, ticker, px, stop, reason, now, events, frac=MAX_POS, risk=N
     a["cash"] -= cost + f
     a["positions"].append({"ticker": ticker, "shares": units, "entry": fill, "entry_px": px, "stop": stop,
                            "target": target, "trail": trail, "high": px, "mark": px, "fees": f,
-                           "opened": now.isoformat(), "checked": now.isoformat(), "reason": reason})
+                           "opened": now.isoformat(), "checked": now.isoformat(), "reason": reason, **(extra or {})})
     a["keys"].append(ticker)
     t = record(a, "BUY", ticker, fill, units, f, reason, now)
     events.append((name, t))
@@ -306,6 +306,7 @@ def run(notify, asx_open, now=None):
     except Exception as e:
         print("Race settings load failed:", e)
         mode = "trade"
+    import bots  # noqa: F401  registers the five bot strategies
     mkt = Market()
     for rc in RACES.values():
         try:
