@@ -68,7 +68,7 @@ class Bot:
                    risk=sig.get("risk"), target=sig.get("target"), trail=sig.get("trail"), extra=sig.get("extra")):
                 a["last_buy_day"] = today(now)
         if a.get("diary", {}).get("day") != today(now):
-            note = "I'm benched by the loss brake (down 15% this season) until the reset, so no new trades. " if a["benched"] else ""
+            note = "I'm benched by the loss brake (down 15% from my peak), so no new buys until I recover or the next scorecard. " if a["benched"] else ""
             a["diary"] = {"day": today(now), "text": note + self.diary(a, seen, len(found))}
 
     def may_buy(self, a, now):
@@ -250,4 +250,5 @@ class Morpheus(Bot):
 for _bot in (Tyler(), Ryan(), Nathan(), Newton(), Morpheus()):
     STRATEGIES[_bot.name] = _bot
 STYLES = {n: b.style for n, b in STRATEGIES.items()}
-STYLES["Buy and Hold"] = "The Benchmark: everything into one index on day one, never trades."
+STYLES["Buy and Hold"] = "The Benchmark: puts each deposit into one index as it arrives, never sells."
+STYLES["Coach's Picks"] = "The Coach: up to 3 hand-picked trades a week with the new $400, or saves the cash."

@@ -1,7 +1,8 @@
-"""Bot race: five paper-trading bots and a Buy and Hold benchmark, in a STOCKS race and a CRYPTO race.
+"""Iron Paw race: five bots, Coach's Picks and a Buy and Hold benchmark, in a STOCKS race and a CRYPTO race.
 
 Pretend money only. No real orders, ever. Prices come only from yfinance; a ticker with no data is skipped,
-never filled in. Everything is stored in Supabase under owner "system".
+never filled in. Money keeps running (weekly $400 deposits, no resets); racers are ranked by time-weighted
+return. Everything is stored in Supabase under owner "system".
 """
 import math
 from datetime import datetime, timedelta, timezone
@@ -13,13 +14,15 @@ import yfinance as yf
 from store import get, put
 
 MEL = ZoneInfo("Australia/Melbourne")
-START_CASH = 50000.0
-SEASON_DAYS = 21
+VERSION = 2
+DEPOSIT = 400.0                    # every racer, every Monday 9am Melbourne
+SCORECARD_DAYS = 21                # Hall of Fame scorecard every 3 weeks
 SLIP = 0.001                       # 0.1% against us on every fill
-STOCK_FEE = 10.0                   # brokerage per stock trade
-CRYPTO_FEE = 0.001                 # 0.1% of the trade value per crypto trade
-MAX_POS = 0.25                     # max 25% of a bot's account in one position
-LOSS_BRAKE = 0.15                  # down 15% in a season: benched until the reset
+COINSPOT_FEE = 0.01                # CoinSpot instant buy/sell: 1% of the trade
+MAX_STOCK_TRADE = 10000.0          # CommSec tiers we were given stop at $10,000
+MAX_FEE_PCT = 0.02                 # never trade if fees are more than 2% of the trade
+MAX_POS = 0.25                     # max 25% of a racer's account in one position
+LOSS_BRAKE = 0.15                  # 15% below its peak: stops buying until it recovers or the next scorecard
 HISTORY_EVERY = timedelta(minutes=30)
 FRESH = timedelta(minutes=30)      # stocks race only trades on bars this recent (skips holidays)
 SUMMARY_HOUR = 17                  # daily summary push, Melbourne time
@@ -27,15 +30,20 @@ SUMMARY_HOUR = 17                  # daily summary push, Melbourne time
 STOCKS = ["ALL.AX", "ANZ.AX", "BHP.AX", "BOE.AX", "CBA.AX", "COL.AX", "CSL.AX", "EVN.AX", "FMG.AX", "GMG.AX",
           "IGO.AX", "LYC.AX", "MIN.AX", "MQG.AX", "NAB.AX", "NST.AX", "PDN.AX", "PLS.AX", "QBE.AX", "REA.AX",
           "RIO.AX", "STO.AX", "TCL.AX", "TLS.AX", "WBC.AX", "WDS.AX", "WES.AX", "WOW.AX", "WTC.AX", "XRO.AX"]
-CRYPTO = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "BNB-USD", "ADA-USD", "DOGE-USD", "AVAX-USD",
-          "LINK-USD", "DOT-USD", "LTC-USD", "BCH-USD"]
+CRYPTO = ["BTC-AUD", "ETH-AUD", "SOL-AUD", "XRP-AUD", "BNB-AUD", "ADA-AUD", "DOGE-AUD", "AVAX-AUD",
+          "LINK-AUD", "DOT-AUD", "LTC-AUD", "BCH-AUD"]   # AUD pairs, so prices and fees are in Australian dollars
 BOTS = ["Tyler", "Ryan", "Nathan", "Newton", "Morpheus"]
+COACH = "Coach's Picks"
 BENCH = "Buy and Hold"
-ALL_RACES = {"stocks": {"key": "stocks", "name": "STOCKS", "doc": "race_stocks", "tickers": STOCKS, "bench": "VAS.AX", "crypto": False},
-             "crypto": {"key": "crypto", "name": "CRYPTO", "doc": "race_crypto", "tickers": CRYPTO, "bench": "BTC-USD", "crypto": True}}
+RACERS = BOTS + [COACH, BENCH]
+ALL_RACES = {"stocks": {"key": "stocks", "name": "STOCKS", "doc": "race_stocks", "tickers": STOCKS, "bench": "VAS.AX", "crypto": False,
+                        "start_cash": 400.0, "broker": "CommSec"},
+             "crypto": {"key": "crypto", "name": "CRYPTO", "doc": "race_crypto", "tickers": CRYPTO, "bench": "BTC-AUD", "crypto": True,
+                        "start_cash": 5000.0, "broker": "CoinSpot"}}
 ENABLED = ["stocks", "crypto"]     # both races on: STOCKS while the ASX is open, CRYPTO 24/7
 RACES = {k: ALL_RACES[k] for k in ENABLED}
 STRATEGIES = {}                    # bot name -> strategy object with .trade(); filled in by bots.py
+RISK = {"check": None}             # optional pre-trade check: f(rc, a, name, trade) -> (approved, reason)
 
 
 def p(x):
@@ -81,31 +89,65 @@ class Market:
 
 
 # ---------- Accounts and shared safety rules ----------
-def new_account():
-    return {"cash": START_CASH, "positions": [], "trades": [], "keys": [], "keys_day": "", "benched": False, "diary": {}}
+def new_account(cash):
+    return {"cash": cash, "positions": [], "trades": [], "keys": [], "keys_day": "", "benched": False, "diary": {},
+            "contributed": cash, "fees_paid": 0.0, "index": 1.0, "base": cash, "peak": 1.0, "sc_index": 1.0}
 
 
-def new_race(key, now, season=1, champion=None):
-    names = BOTS + [BENCH]
-    return {"race": key, "season": season, "start": now.isoformat(), "champion": champion,
-            "accounts": {n: new_account() for n in names},
-            "history": [{"t": now.isoformat(), "v": {n: START_CASH for n in names}}]}
+def next_monday_9(after):
+    """The next Monday 9:00am Melbourne strictly after `after` (daylight saving handled)."""
+    m = after.astimezone(MEL)
+    d = m.date() + timedelta(days=(7 - m.weekday()) % 7)
+    t = datetime(d.year, d.month, d.day, 9, 0, tzinfo=MEL)
+    if t <= m:
+        d += timedelta(days=7)
+        t = datetime(d.year, d.month, d.day, 9, 0, tzinfo=MEL)
+    return t.astimezone(timezone.utc)
+
+
+def new_race(rc, now):
+    return {"race": rc["key"], "version": VERSION, "start": now.isoformat(), "scorecard": 1, "sc_start": now.isoformat(),
+            "champion": None, "next_deposit": next_monday_9(now).isoformat(), "coach_orders": [],
+            "accounts": {n: new_account(rc["start_cash"]) for n in RACERS},
+            "history": [{"t": now.isoformat(), "v": {n: rc["start_cash"] for n in RACERS}, "r": {n: 0.0 for n in RACERS}}]}
 
 
 def value(a):
     return a["cash"] + sum(x["shares"] * x["mark"] for x in a["positions"])
 
 
+def twr(a):
+    """Time-weighted % return: growth of the money, ignoring when deposits arrived."""
+    return (a["index"] - 1) * 100
+
+
+def update_index(a):
+    v = value(a)
+    if a["base"] > 0:
+        a["index"] *= v / a["base"]
+    a["base"] = v
+    a["peak"] = max(a["peak"], a["index"])
+
+
 def fee(rc, amount):
-    return amount * CRYPTO_FEE if rc["crypto"] else STOCK_FEE
+    """CoinSpot: 1% of the trade. CommSec: $5 to $1,000, $10 to $3,000, $19.95 to $10,000 (None above that)."""
+    if rc["crypto"]:
+        return amount * COINSPOT_FEE
+    if amount <= 1000:
+        return 5.0
+    if amount <= 3000:
+        return 10.0
+    if amount <= MAX_STOCK_TRADE:
+        return 19.95
+    return None
 
 
-def season_end(doc):
-    return datetime.fromisoformat(doc["start"]) + timedelta(days=SEASON_DAYS)
+def scorecard_end(doc):
+    return datetime.fromisoformat(doc["sc_start"]) + timedelta(days=SCORECARD_DAYS)
 
 
 def days_left(doc, now):
-    return max(0, math.ceil((season_end(doc) - now).total_seconds() / 86400))
+    return max(0, math.ceil((scorecard_end(doc) - now).total_seconds() / 86400))
 
 
 def record(a, side, ticker, price, shares, f, reason, now, **extra):
@@ -115,34 +157,57 @@ def record(a, side, ticker, price, shares, f, reason, now, **extra):
     return t
 
 
-def buy(rc, a, name, ticker, px, stop, reason, now, events, frac=MAX_POS, risk=None, target=None, trail=None, extra=None):
-    """Open a position under the shared rules. Returns the trade, or None if a rule says no."""
-    if a["benched"] or not px or px <= 0:
-        return None
+def reject(a, why):
+    a["last_reject"] = why
+    return None
+
+
+def buy(rc, a, name, ticker, px, stop, reason, now, events, frac=MAX_POS, risk=None, target=None, trail=None, extra=None, dollars=None):
+    """Open a position under the shared rules. Returns the trade, or None (the reason is kept in a["last_reject"])."""
+    if a["benched"]:
+        return reject(a, "loss brake is on")
+    if not px or px <= 0:
+        return reject(a, "no price")
     today = now.astimezone(MEL).date().isoformat()
     if a.get("keys_day") != today:
         a["keys_day"], a["keys"] = today, []
     if ticker in a["keys"] or any(x["ticker"] == ticker for x in a["positions"]):
-        return None  # duplicate guard: one buy per ticker per day, never while already holding it
+        return reject(a, "already bought this signal")  # duplicate guard
     if stop is None or not 0 < stop < px:
-        return None  # every position needs a stop loss below the price
+        return reject(a, "no valid stop loss")  # every position needs a stop below the price
     fill = px * (1 + SLIP)
     total = value(a)
     budget = min(frac, MAX_POS) * total
+    if dollars is not None:
+        budget = min(budget, dollars)
+    if not rc["crypto"]:
+        budget = min(budget, MAX_STOCK_TRADE)
     if risk is not None:  # size so a stop-out loses about `risk` of the account, fees included
-        per_unit = fill - stop * (1 - SLIP) + (2 * fill * CRYPTO_FEE if rc["crypto"] else 0)
-        cash_risk = risk * total - (0 if rc["crypto"] else 2 * STOCK_FEE)
+        per_unit = fill - stop * (1 - SLIP) + (2 * fill * COINSPOT_FEE if rc["crypto"] else 0)
+        cash_risk = risk * total - (0 if rc["crypto"] else 2 * fee(rc, max(budget, 1)))
         if cash_risk <= 0:
-            return None
+            return reject(a, "account too small for risk-based sizing")
         budget = min(budget, cash_risk / per_unit * fill)
-    budget = min(budget, a["cash"] / (1 + CRYPTO_FEE) if rc["crypto"] else a["cash"] - STOCK_FEE)
+    budget = min(budget, a["cash"] / (1 + COINSPOT_FEE) if rc["crypto"] else a["cash"] - fee(rc, min(a["cash"], MAX_STOCK_TRADE)))
     units = budget / fill
     units = math.floor(units * 1e6) / 1e6 if rc["crypto"] else math.floor(units)
     if units <= 0:
-        return None
+        return reject(a, "not enough cash")
     cost = units * fill
     f = fee(rc, cost)
+    if f is None or cost + f > a["cash"] + 1e-9:
+        return reject(a, "not enough cash")
+    if f > MAX_FEE_PCT * cost:
+        return reject(a, f"fees ${f:,.2f} would be {f / cost * 100:.1f}% of a ${cost:,.2f} trade (limit 2%)")
+    if RISK["check"]:
+        ok, why = RISK["check"](rc, a, name, {"ticker": ticker, "price": fill, "units": units, "cost": round(cost, 2), "fee": round(f, 2),
+                                              "stop": stop, "target": target, "reason": reason})
+        if not ok:
+            events.append((name, {"time": now.isoformat(), "side": "BLOCKED", "ticker": ticker, "price": fill, "shares": units,
+                                  "fee": 0.0, "reason": why}))
+            return reject(a, f"risk manager blocked it: {why}")
     a["cash"] -= cost + f
+    a["fees_paid"] += f
     a["positions"].append({"ticker": ticker, "shares": units, "entry": fill, "entry_px": px, "stop": stop,
                            "target": target, "trail": trail, "high": px, "mark": px, "fees": f,
                            "opened": now.isoformat(), "checked": now.isoformat(), "reason": reason, **(extra or {})})
@@ -157,8 +222,11 @@ def sell(rc, a, name, pos, px, reason, now, events):
     fill = px * (1 - SLIP)
     proceeds = pos["shares"] * fill
     f = fee(rc, proceeds)
+    if f is None:  # above the CommSec tiers: never invent a fee, use the top tier we were given
+        f = fee(rc, MAX_STOCK_TRADE)
     pnl = proceeds - f - pos["shares"] * pos["entry"] - pos["fees"]
     a["cash"] += proceeds - f
+    a["fees_paid"] += f
     a["positions"].remove(pos)
     t = record(a, "SELL", pos["ticker"], fill, pos["shares"], f, reason, now, pnl=round(pnl, 2))
     events.append((name, t))
@@ -196,25 +264,54 @@ def protect(rc, a, name, pos, mkt, now, events):
 
 
 def bench_buy(rc, a, mkt, now, events):
-    """Buy and Hold: everything into the benchmark on day one, then never trades."""
-    if a.get("bought"):
-        return
+    """Buy and Hold: puts each deposit into the benchmark as it arrives, never sells."""
     px = mkt.price(rc["bench"])
     if not px:
         return
     fill = px * (1 + SLIP)
-    budget = a["cash"] / (1 + CRYPTO_FEE) if rc["crypto"] else a["cash"] - STOCK_FEE
+    budget = a["cash"] / (1 + COINSPOT_FEE) if rc["crypto"] else a["cash"] - fee(rc, min(a["cash"], MAX_STOCK_TRADE))
+    budget = budget if rc["crypto"] else min(budget, MAX_STOCK_TRADE)
     units = math.floor(budget / fill * 1e6) / 1e6 if rc["crypto"] else math.floor(budget / fill)
     if units <= 0:
         return
     f = fee(rc, units * fill)
+    if f is None or f > MAX_FEE_PCT * units * fill or units * fill + f > a["cash"] + 1e-9:
+        return  # waits for more cash rather than paying more than 2% in fees
     a["cash"] -= units * fill + f
-    a["positions"].append({"ticker": rc["bench"], "shares": units, "entry": fill, "entry_px": px, "stop": None,
-                           "target": None, "trail": None, "high": px, "mark": px, "fees": f,
-                           "opened": now.isoformat(), "checked": now.isoformat(), "reason": "benchmark"})
-    a["bought"] = True
+    a["fees_paid"] += f
+    held = next((x for x in a["positions"] if x["ticker"] == rc["bench"]), None)
+    if held:  # top up the one holding at an average entry price
+        n = held["shares"] + units
+        held["entry"] = (held["entry"] * held["shares"] + fill * units) / n
+        held["shares"], held["fees"], held["mark"] = n, held["fees"] + f, px
+    else:
+        a["positions"].append({"ticker": rc["bench"], "shares": units, "entry": fill, "entry_px": px, "stop": None,
+                               "target": None, "trail": None, "high": px, "mark": px, "fees": f,
+                               "opened": now.isoformat(), "checked": now.isoformat(), "reason": "benchmark"})
     events.append((BENCH, record(a, "BUY", rc["bench"], fill, units, f,
-                                 f"Benchmark (the yardstick to beat): all $50,000 into {rc['bench']} on day one, then never trades.", now)))
+                                 f"Benchmark (the yardstick to beat): puts each deposit into {rc['bench']} as it arrives and never sells.", now)))
+
+
+def deposit(rc, doc, now):
+    """Every Monday 9am Melbourne, every racer gets another $400."""
+    while now >= datetime.fromisoformat(doc["next_deposit"]):
+        for a in doc["accounts"].values():
+            update_index(a)
+            a["cash"] += DEPOSIT
+            a["contributed"] += DEPOSIT
+            a["base"] = value(a)
+        doc["next_deposit"] = next_monday_9(datetime.fromisoformat(doc["next_deposit"])).isoformat()
+
+
+def coach_orders(rc, doc, mkt, now, events):
+    """Carry out Coach's Picks orders (written weekly by coach.py) once its market is open."""
+    a = doc["accounts"][COACH]
+    for o in [o for o in doc.get("coach_orders", []) if o.get("status") == "pending"]:
+        t = buy(rc, a, COACH, o["ticker"], mkt.price(o["ticker"]), o.get("stop"), o["reason"], now, events,
+                frac=MAX_POS, target=o.get("target"), dollars=o["dollars"])
+        o["status"], o["done"] = ("bought", now.isoformat()) if t else ("skipped", now.isoformat())
+        if not t:
+            o["why"] = a.get("last_reject", "")
 
 
 def tick(rc, doc, mkt, now, asx_open, events):
@@ -231,49 +328,64 @@ def tick(rc, doc, mkt, now, asx_open, events):
             if pos.get("stop") is not None:
                 protect(rc, a, name, pos, mkt, now, events)
     bench_buy(rc, accts[BENCH], mkt, now, events)
+    coach_orders(rc, doc, mkt, now, events)
     for name in BOTS:
-        a = accts[name]
         strat = STRATEGIES.get(name)
         if strat:
             try:
-                strat.trade(rc, a, name, mkt, now, events)
+                strat.trade(rc, accts[name], name, mkt, now, events)
             except Exception as e:
                 print("Bot failed:", rc["key"], name, e)
-        if not a["benched"] and value(a) <= START_CASH * (1 - LOSS_BRAKE):
-            a["benched"] = True
-            events.append((name, record(a, "BENCHED", "", 0.0, 0, 0.0, f"Down {LOSS_BRAKE * 100:.0f}% this season, so the loss "
-                                        "brake (an automatic stop on trading) benches me until the reset.", now)))
+    for name, a in accts.items():
+        update_index(a)
+        braked = name != BENCH and a["index"] <= a["peak"] * (1 - LOSS_BRAKE)
+        if braked and not a["benched"]:
+            events.append((name, record(a, "BENCHED", "", 0.0, 0, 0.0, f"Down {LOSS_BRAKE * 100:.0f}% from my peak, so the loss brake "
+                                        "(an automatic stop on buying) is on until I recover or the next scorecard.", now)))
+        a["benched"] = braked
     h = doc["history"]
     if not h or now - datetime.fromisoformat(h[-1]["t"]) >= HISTORY_EVERY:
-        h.append({"t": now.isoformat(), "v": {n: round(value(a), 2) for n, a in accts.items()}})
+        h.append({"t": now.isoformat(), "v": {n: round(value(a), 2) for n, a in accts.items()}, "r": {n: round(twr(a), 3) for n, a in accts.items()}})
     return True
 
 
 def standings(doc):
-    return sorted(((n, value(a)) for n, a in doc["accounts"].items()), key=lambda x: -x[1])
+    """Ranked by time-weighted % return on money put in."""
+    return sorted(((n, value(a)) for n, a in doc["accounts"].items()), key=lambda x: -twr(doc["accounts"][x[0]]))
 
 
 def standings_text(doc):
-    return "\n".join(f"{i}. {n} ${v:,.0f} ({(v / START_CASH - 1) * 100:+.1f}%)" for i, (n, v) in enumerate(standings(doc), 1))
+    A = doc["accounts"]
+    return "\n".join(f"{i}. {n} {twr(A[n]):+.1f}% (${v:,.0f} from ${A[n]['contributed']:,.0f} in, fees ${A[n]['fees_paid']:,.2f}, "
+                     f"{sum(1 for t in A[n]['trades'] if t['side'] in ('BUY', 'SELL'))} trades)" for i, (n, v) in enumerate(standings(doc), 1))
 
 
-def finish_season(rc, doc, now, notify):
-    """Save the final results to the Hall of Fame, crown the best bot, announce it, and reset every account."""
-    table = standings(doc)
-    winner = next(n for n, _ in table if n in BOTS)
+def finish_scorecard(rc, doc, now, notify):
+    """Every 3 weeks: save each racer's % for the period to the Hall of Fame and crown a champion. No reset."""
+    A = doc["accounts"]
+    rows = sorted(((n, (a["index"] / a["sc_index"] - 1) * 100) for n, a in A.items()), key=lambda x: -x[1])
+    winner = next(n for n, _ in rows if n != BENCH)
+    end = scorecard_end(doc)
     hof = get("system", "hall_of_fame", None) or []
-    if not any(e["race"] == rc["key"] and e["season"] == doc["season"] for e in hof):
-        hof.append({"race": rc["key"], "season": doc["season"], "start": doc["start"], "end": now.isoformat(), "winner": winner,
-                    "standings": [{"name": n, "value": round(v, 2), "pct": round((v / START_CASH - 1) * 100, 2)} for n, v in table]})
+    if not any(e.get("race") == rc["key"] and e.get("scorecard") == doc["scorecard"] for e in hof):
+        hof.append({"race": rc["key"], "scorecard": doc["scorecard"], "start": doc["sc_start"], "end": end.isoformat(), "winner": winner,
+                    "results": [{"name": n, "pct": round(pct, 2), "value": round(value(A[n]), 2), "contributed": A[n]["contributed"],
+                                 "fees": round(A[n]["fees_paid"], 2)} for n, pct in rows]})
         put("system", "hall_of_fame", hof)
-        notify(f"{rc['name']} season {doc['season']} final standings",
-               f"Champion: {winner}.\n{standings_text(doc)}\nEvery account resets to $50,000 for season {doc['season'] + 1}.", "trophy", "high")
-    return new_race(rc["key"], now, season=doc["season"] + 1, champion=winner)
+        notify(f"{rc['name']} scorecard {doc['scorecard']} (3 weeks)",
+               f"Champion: {winner}.\n" + "\n".join(f"{i}. {n} {pct:+.1f}%" for i, (n, pct) in enumerate(rows, 1)) + "\nThe money keeps running.",
+               "trophy", "high")
+    for a in A.values():
+        a["sc_index"], a["peak"], a["benched"] = a["index"], a["index"], False
+    doc.update(scorecard=doc["scorecard"] + 1, sc_start=end.isoformat(), champion=winner)
+    return doc
 
 
 def trade_line(name, t):
     if t["side"] == "BENCHED":
         return f"{name} is benched: {t['reason'][:1].lower()}{t['reason'][1:]}"
+    if t["side"] == "BLOCKED":
+        return f"Risk manager blocked {name} buying {t['ticker']} at ${p(t['price'])}: {t['reason']}"
     return f"{name} {'bought' if t['side'] == 'BUY' else 'sold'} {t['ticker']} at ${p(t['price'])}: {t['reason']}"
 
 
@@ -293,7 +405,7 @@ def daily_summary(notify, now):
         doc = get("system", rc["doc"], None)
         if not doc:
             continue
-        parts.append(f"{rc['name']} (season {doc['season']}, {days_left(doc, now)} days left)\n{standings_text(doc)}")
+        parts.append(f"{rc['name']} (scorecard in {days_left(doc, now)} days)\n{standings_text(doc)}")
         for n, a in doc["accounts"].items():
             today = [t for t in a["trades"] if datetime.fromisoformat(t["time"]).astimezone(MEL).date() == mel.date()]
             if today:
@@ -318,17 +430,25 @@ def run(notify, asx_open, now=None):
         except Exception as e:
             print("Race load failed:", rc["key"], e)
             continue  # never replace a saved race with a fresh one
-        doc = doc or new_race(rc["key"], now)
+        if doc and doc.get("version") != VERSION:  # old $50,000 race: keep a copy, then start the new money model
+            try:
+                put("system", rc["doc"] + "_v1", doc)
+            except Exception as e:
+                print("Race archive failed:", rc["key"], e)
+                continue
+            doc = None
+        doc = doc or new_race(rc, now)
         events = []
         try:
+            deposit(rc, doc, now)
             tick(rc, doc, mkt, now, asx_open, events)
         except Exception as e:
             print("Race tick failed:", rc["key"], e)
         try:
-            if now >= season_end(doc):
-                doc = finish_season(rc, doc, now, notify)
+            while now >= scorecard_end(doc):
+                doc = finish_scorecard(rc, doc, now, notify)
         except Exception as e:
-            print("Season end failed:", rc["key"], e)
+            print("Scorecard failed:", rc["key"], e)
         try:
             put("system", rc["doc"], doc)
         except Exception as e:

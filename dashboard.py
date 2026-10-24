@@ -267,7 +267,29 @@ if not desktop:  # phone view: tabs
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
-RACER_COLOR = {"Tyler": "#FF8A3D", "Ryan": "#F5C542", "Nathan": "#4FD1C5", "Newton": "#7AA2FF", "Morpheus": "#C084FC", "Buy and Hold": "#A7ADB6"}
+RACER_COLOR = {"Tyler": "#FF8A3D", "Ryan": "#F5C542", "Nathan": "#4FD1C5", "Newton": "#7AA2FF", "Morpheus": "#C084FC",
+               "Coach's Picks": "#F472B6", "Buy and Hold": "#A7ADB6"}
+
+
+def n_trades(a):
+    return sum(1 for t in a["trades"] if t["side"] in ("BUY", "SELL"))
+
+
+def lb_row(i, n, a, champ):
+    """Leaderboard row: time-weighted % first, then value, money put in, fees and trades."""
+    r = race.twr(a)
+    return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
+            f'<span class="lb-right"><span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span><br>'
+            f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
+
+
+def hof_view(e):
+    """Hall of Fame entry: new 3-week scorecards, or an old season entry."""
+    rows = e.get("results") or e.get("standings") or []
+    win = next((x for x in rows if x["name"] == e["winner"]), {"pct": 0.0})
+    bench = next((x for x in rows if x["name"] == race.BENCH), None)
+    label = f'Scorecard {e["scorecard"]}' if "scorecard" in e else f'Season {e.get("season")}'
+    return label, win["pct"], bench["pct"] if bench else None
 
 
 def swatch(n):
@@ -308,8 +330,8 @@ def bot_card(n, a, champ, now_utc):
              else '<div class="sub">No diary entry yet today.</div>')
     return (f'<div class="card" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b style="font-size:1.1rem">{swatch(n)}{n}{champ_badge(n, champ)}</b>'
             f'{mood_pill(mood(a, now_utc))}</div><div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
-            f'<div class="bigv">${v:,.0f}</div><div>{money(v - race.START_CASH)} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}% this season)</span></div>'
-            + line("Open positions", str(len(a["positions"])))
+            f'<div class="bigv">{race.twr(a):+.2f}%</div><div class="sub">time-weighted return · ${v:,.0f} from ${a["contributed"]:,.0f} put in</div>'
+            + line("Fees paid", f'${a["fees_paid"]:,.2f}') + line("Open positions", str(len(a["positions"])))
             + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
             + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
 
@@ -367,7 +389,7 @@ def bot_mini(n, a, now_utc):
     lt = (f'<b>{done.get(last["side"], last["side"])} {last["ticker"]}</b> · {datetime.fromisoformat(last["time"]).astimezone(MEL).strftime("%a %H:%M")}: {last["reason"]}'
           if last else "No trades yet.")
     return (f'<div class="bc" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b>{swatch(n)}{n}</b>{mood_pill(mood(a, now_utc))}</div>'
-            f'<div class="v">${v:,.0f} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></div><div class="lt">{lt}</div></div>')
+            f'<div class="v">{race.twr(a):+.2f}% <span class="sub">${v:,.0f}</span></div><div class="lt">{lt}</div></div>')
 
 
 def render_desktop():
@@ -402,10 +424,10 @@ def render_desktop():
         hof = [e for e in (get("system", "hall_of_fame", None) or []) if e.get("race") == rc["key"]]
     except Exception:
         hof = []
-    hof_html = "".join(mini(f'Season {e["season"]}<br><span class="sub">{datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}</span>',
-                            f'{swatch(e["winner"])}<b>{e["winner"]}</b> {next(x["pct"] for x in e["standings"] if x["name"] == e["winner"]):+.1f}%') for e in reversed(hof))
-    ends = f' Season {rdoc["season"]} ends {race.season_end(rdoc).astimezone(MEL).strftime("%a %d %b")}.' if rdoc else ""
-    left.markdown(pn("Hall of Fame", hof_html or f'<div class="sub">No finished seasons yet.{ends}</div>', "h-hof", rc["name"]), unsafe_allow_html=True)
+    hof_html = "".join(mini(f'{hof_view(e)[0]}<br><span class="sub">{datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}</span>',
+                            f'{swatch(e["winner"])}<b>{e["winner"]}</b> {hof_view(e)[1]:+.1f}%') for e in reversed(hof))
+    ends = f' Scorecard {rdoc["scorecard"]} lands {race.scorecard_end(rdoc).astimezone(MEL).strftime("%a %d %b")}.' if rdoc else ""
+    left.markdown(pn("Hall of Fame", hof_html or f'<div class="sub">No scorecards yet.{ends}</div>', "h-hof", rc["name"]), unsafe_allow_html=True)
     try:
         rset = get("system", "race_settings", None) or {}
     except Exception:
@@ -427,10 +449,8 @@ def render_desktop():
         right.markdown(pn("Racers", '<div class="sub">No racers yet.</div>', "h-mid"), unsafe_allow_html=True)
     else:
         table, champ = race.standings(rdoc), rdoc.get("champion")
-        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-                       f'<span class="lb-right"><span class="lb-val">${v:,.0f}</span> {money(v - race.START_CASH)} '
-                       f'<span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>' for i, (n, v) in enumerate(table, 1))
-        centre.markdown(pn(f'{rc["name"]} leaderboard', rows, "h-lb", f'Season {rdoc["season"]} · {race.days_left(rdoc, now_utc)} days left'), unsafe_allow_html=True)
+        rows = "".join(lb_row(i, n, rdoc["accounts"][n], champ) for i, (n, _) in enumerate(table, 1))
+        centre.markdown(pn(f'{rc["name"]} leaderboard', rows, "h-lb", f'ranked by time-weighted return · scorecard in {race.days_left(rdoc, now_utc)} days'), unsafe_allow_html=True)
         hist = rdoc.get("history", [])
         xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
         fig = go.Figure()
@@ -492,22 +512,20 @@ with race_tab:
     if rdoc:
         table = race.standings(rdoc)
         champ = rdoc.get("champion")
-        st.markdown(f'<div class="sub" style="margin-bottom:6px">Season {rdoc["season"]} · {race.days_left(rdoc, now_utc)} days left · '
+        st.markdown(f'<div class="sub" style="margin-bottom:6px">Ranked by time-weighted return on money put in · {rc["broker"]} fees · '
                     f'paper money only, no real orders</div>', unsafe_allow_html=True)
         accts = rdoc["accounts"]
-        lead_n, lead_v = table[0]
-        bench_v = race.value(accts[race.BENCH])
-        n_trades = sum(1 for n in race.BOTS for t in accts[n]["trades"] if t["side"] in ("BUY", "SELL"))
-        beat = sum(1 for n in race.BOTS if race.value(accts[n]) > bench_v)
-        kpis = [("Leader", f"{swatch(lead_n)}{lead_n}", f"{(lead_v / race.START_CASH - 1) * 100:+.1f}%"),
-                ("Days left", str(race.days_left(rdoc, now_utc)), f"of {race.SEASON_DAYS}, season {rdoc['season']}"),
-                ("Bot trades", str(n_trades), "this season"),
-                ("Beating Buy and Hold", f"{beat} of {len(race.BOTS)}", f"benchmark {(bench_v / race.START_CASH - 1) * 100:+.1f}%")]
+        lead_n = table[0][0]
+        bench_r = race.twr(accts[race.BENCH])
+        movers = [n for n in race.RACERS if n != race.BENCH]
+        beat = sum(1 for n in movers if race.twr(accts[n]) > bench_r)
+        kpis = [("Leader", f"{swatch(lead_n)}{lead_n}", f"{race.twr(accts[lead_n]):+.2f}%"),
+                ("Next scorecard", f"{race.days_left(rdoc, now_utc)} days", f"scorecard {rdoc['scorecard']}, every 3 weeks"),
+                ("Trades", str(sum(n_trades(accts[n]) for n in movers)), f"fees ${sum(accts[n]['fees_paid'] for n in movers):,.2f}"),
+                ("Beating Buy and Hold", f"{beat} of {len(movers)}", f"benchmark {bench_r:+.2f}%")]
         st.markdown('<div class="kpis">' + "".join(f'<div class="kpi"><div class="label">{k}</div><div class="num">{v}</div><div class="sub">{s}</div></div>'
                                                    for k, v, s in kpis) + '</div>', unsafe_allow_html=True)
-        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-                       f'<span class="lb-right"><span class="lb-val">${v:,.0f}</span><br>{money(v - race.START_CASH)} '
-                       f'<span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>' for i, (n, v) in enumerate(table, 1))
+        rows = "".join(lb_row(i, n, accts[n], champ) for i, (n, _) in enumerate(table, 1))
         st.markdown(f'<div class="card">{rows}</div>', unsafe_allow_html=True)
         hist = rdoc.get("history", [])
         xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
@@ -529,15 +547,14 @@ with race_tab:
         hof = []
     past = [e for e in hof if e.get("race") == rc["key"]]
     if not past:
-        ends = f" Season {rdoc['season']} ends {race.season_end(rdoc).astimezone(MEL).strftime('%a %d %b')}." if rdoc else ""
-        st.markdown(f'<div class="card sub">No finished seasons yet.{ends}</div>', unsafe_allow_html=True)
+        ends = f" Scorecard {rdoc['scorecard']} lands {race.scorecard_end(rdoc).astimezone(MEL).strftime('%a %d %b')}." if rdoc else ""
+        st.markdown(f'<div class="card sub">No scorecards yet.{ends}</div>', unsafe_allow_html=True)
     for e in reversed(past):
-        win = next(x for x in e["standings"] if x["name"] == e["winner"])
-        bench = next((x for x in e["standings"] if x["name"] == race.BENCH), None)
+        label, win_pct, bench_pct = hof_view(e)
         when = f'{datetime.fromisoformat(e["start"]).astimezone(MEL).strftime("%d %b")} to {datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}'
-        st.markdown(f'<div class="card"><div class="row"><b style="font-size:1.1rem">Season {e["season"]}</b><span class="champ">{e["winner"].upper()}</span></div>'
-                    + line("Winner", f'{e["winner"]} {money(win["value"] - race.START_CASH)} ({win["pct"]:+.1f}%)')
-                    + (line("Buy and Hold", f'{bench["pct"]:+.1f}%') if bench else "") + line("Dates", when) + '</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card"><div class="row"><b style="font-size:1.1rem">{label}</b><span class="champ">{e["winner"].upper()}</span></div>'
+                    + line("Winner", f'{e["winner"]} {win_pct:+.1f}% over the 3 weeks')
+                    + (line("Buy and Hold", f'{bench_pct:+.1f}%') if bench_pct is not None else "") + line("Dates", when) + '</div>', unsafe_allow_html=True)
     try:
         rset = get("system", "race_settings", None) or {}
     except Exception:
