@@ -302,10 +302,10 @@ def run(notify, asx_open, now=None):
     """One race pass for both races. Never raises: a failure in one race leaves the other running."""
     now = now or datetime.now(timezone.utc)
     try:
-        mode = (get("system", "race_settings", None) or {}).get("pings", "trade")
+        mode = (get("system", "race_settings", None) or {}).get("pings", "summary")
     except Exception as e:
         print("Race settings load failed:", e)
-        mode = "trade"
+        mode = "summary"
     import bots  # noqa: F401  registers the five bot strategies
     mkt = Market()
     for rc in RACES.values():

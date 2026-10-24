@@ -299,7 +299,7 @@ if top_r.button("Log out"):
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-race_tab, home, port, celebs = st.tabs(["Race", "Home", "Portfolio", "Celebs"])
+race_tab, home, port, insiders = st.tabs(["Race", "Home", "Portfolio", "Insiders"])
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
@@ -419,7 +419,7 @@ with race_tab:
         rset = None
     modes = {"trade": "Pings: every trade", "summary": "Pings: daily summary"}
     if rset is not None:
-        cur = rset.get("pings", "trade")
+        cur = rset.get("pings", "summary")
         pings = st.radio("Notifications", list(modes), index=list(modes).index(cur), format_func=modes.get, horizontal=True, key="pings")
         if pings != cur:
             try:
@@ -550,8 +550,8 @@ with port:
                     + f'<div class="sub" style="margin-top:8px">Best Long term idea (score {b["score"]}), bought with the proceeds from selling {sold_name.get(b["sale_key"], "a holding")}.</div>')
             card(b["ticker"], "BUY", body)
 
-# ---------- Celebs ----------
-with celebs:
+# ---------- Insiders ----------
+with insiders:
     st.markdown('<div class="sub">US politicians\' trades from public filings, reported days or weeks later. Data: Bargo Congress Trades.</div>', unsafe_allow_html=True)
     try:
         trades = celeb_trades()
