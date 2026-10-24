@@ -108,6 +108,10 @@ try:
     shadow_log = get("system", "shadow_log", None)
 except Exception:
     shadow_log = None
+try:
+    paper_acct = get("system", "paper_account", None)
+except Exception:
+    paper_acct = None
 log_df = pd.DataFrame(load_json("trades", []), columns=COLS)
 for c in ["entry", "shares", "dollars"]:
     log_df[c] = pd.to_numeric(log_df[c], errors="coerce")
@@ -308,7 +312,7 @@ total_pl = float(pnl["gl"].sum()) if len(pnl) else 0.0
 ups = int((pnl["gl"] > 0).sum()) if len(pnl) else 0
 downs = int((pnl["gl"] < 0).sum()) if len(pnl) else 0
 
-alerts, hold_info = [], []
+hold_info = []
 for h in holdings:
     try:
         r = scan_long(h["ticker"])
@@ -318,17 +322,43 @@ for h in holdings:
     dec = decide(h["qty"], paid, r["price"], r["score"], h.get("bought")) if r else None
     if r and paid > 0:  # shadow-bot rules: SELL on a downtrend with a gain over 2%, or a loss worse than 8%
         w = "SELL" if dec["word"] == "SELL" else "BUY" if r["score"] >= 7 else "HOLD"
-        why = dec["reason"]
     else:
         w = long_word(r["score"]) if r else "HOLD"
-        why = "Trending down. Think about selling."
     hold_info.append((h, r, w, dec))
-    if w == "SELL":
-        alerts.append(("SELL", h["ticker"], why))
-for _, r in pnl.iterrows():
-    w, why = trade_word(r, asx_closing)
-    if w == "SELL":
-        alerts.append(("SELL", r["ticker"], why))
+
+def bot_moves(limit=6):
+    """Latest paper-bot and shadow-bot actions, newest first: (time, word, ticker, plain reason)."""
+    ev = []
+    utc = lambda iso: datetime.fromisoformat(iso).astimezone(MEL)
+    mel = lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M").replace(tzinfo=MEL)
+    sold_why = {"stop": "it hit the stop", "target": "it hit the target", "ASX close": "the ASX was about to close"}
+    for x in (paper_acct or {}).get("positions", []):
+        try:
+            ev.append((utc(x["opened"]), "BUY", x["ticker"], f"Paper bot bought {x['shares']:g} at ${fp(x['entry'])}. "
+                       f"Sells if it falls to ${fp(x['stop'])} or rises to ${fp(x['target'])}."))
+        except Exception:
+            pass
+    for x in (paper_acct or {}).get("closed", []):
+        try:
+            ev.append((utc(x["opened"]), "BUY", x["ticker"], f"Paper bot bought {x['shares']:g} at ${fp(x['entry'])}."))
+            ev.append((utc(x["closed"]), "SELL", x["ticker"], f"Paper bot sold {x['shares']:g} at ${fp(x['exit'])} because "
+                       f"{sold_why.get(x['reason'], 'its exit rule fired')}. {'Profit' if x['pnl'] >= 0 else 'Loss'} {money(x['pnl'])} after costs."))
+        except Exception:
+            pass
+    sold_name = {s.get("key"): s.get("ticker") for s in (shadow_log or {}).get("sales", [])}
+    for s in (shadow_log or {}).get("sales", []):
+        try:
+            ev.append((mel(s["date"]), "SELL", s["ticker"], f"Shadow bot paper-sold {s['qty']:g} at ${fp(s['price'])}. {s['reason']}"))
+        except Exception:
+            pass
+    for b in (shadow_log or {}).get("buys", []):
+        try:
+            ev.append((mel(b["date"]), "BUY", b["ticker"], f"Shadow bot paper-bought {b['shares']:g} at ${fp(b['price'])}. Best Long term idea "
+                       f"(score {b['score']}), bought with the proceeds from selling {sold_name.get(b.get('sale_key'), 'a holding')}."))
+        except Exception:
+            pass
+    return sorted(ev, key=lambda e: e[0], reverse=True)[:limit]
+
 
 # ---------- Top of screen ----------
 top_l, top_r = st.columns([3, 1])
@@ -347,11 +377,11 @@ with home:
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
     st.markdown("#### Needs you")
-    if alerts:
-        for w, tk, why in alerts:
-            card(tk, w, f'<div class="sub" style="margin-top:6px">{why}</div>')
-    else:
-        st.markdown('<div class="card sub">All good. Nothing needs you right now.</div>', unsafe_allow_html=True)
+    moves = bot_moves()
+    for when, w, tk, why in moves:
+        card(tk, w, f'<div class="sub" style="margin-top:6px">{why}</div><div class="sub" style="margin-top:4px">{when.strftime("%a %d %b, %H:%M")}</div>')
+    if not moves:
+        st.markdown('<div class="card sub">All quiet.</div>', unsafe_allow_html=True)
     st.markdown("#### Your pots")
     boxes = "".join(f'<div class="card" style="flex:1; margin:0"><div class="sub">{POT_NAME[k]}</div>'
                      f'<b>${pots[k]:,.0f}</b><div class="sub">${cash[k]:,.0f} free</div></div>' for k in pots)
@@ -513,10 +543,7 @@ with watch:
 with paper:
     st.markdown("#### Paper trading")
     st.markdown('<div class="sub">Pretend money only. No real orders are ever placed.</div>', unsafe_allow_html=True)
-    try:
-        acct = get("system", "paper_account", None)
-    except Exception:
-        acct = None
+    acct = paper_acct
     if not acct:
         st.markdown('<div class="card sub">The paper account has not started yet. It makes its first pretend buy when a BUY alert fires.</div>', unsafe_allow_html=True)
     else:
