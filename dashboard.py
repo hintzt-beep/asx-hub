@@ -275,7 +275,7 @@ RACER_COLOR = {"Tyler": "#FF8A3D", "Ryan": "#F5C542", "Nathan": "#4FD1C5", "Newt
 
 
 def n_trades(a):
-    return sum(1 for t in a["trades"] if t["side"] in ("BUY", "SELL"))
+    return sum(1 for t in a.get("trades", []) if t.get("side") in ("BUY", "SELL"))
 
 
 def lb_row(i, n, a, champ, compact=False):
@@ -284,10 +284,10 @@ def lb_row(i, n, a, champ, compact=False):
     pct = f'<span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span>'
     if compact:
         return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a["fees_paid"]:,.2f} · {race.trades_word(a)}</span></span></div>')
+                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a.get("fees_paid", 0):,.2f} · {race.trades_word(a)}</span></span></div>')
     return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
             f'<span class="lb-right">{pct}<br>'
-            f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {race.trades_word(a)}</span></span></div>')
+            f'<span class="sub">${race.value(a):,.0f} from ${a.get("contributed", 0):,.0f} · fees ${a.get("fees_paid", 0):,.2f} · {race.trades_word(a)}</span></span></div>')
 
 
 def risk_log_html(rdoc, n=10, wrap=True):
@@ -300,6 +300,12 @@ def risk_log_html(rdoc, n=10, wrap=True):
                  f'{"APPROVED" if ok else "BLOCKED"}</span> <b>{e["bot"]}</b> {e["ticker"]} ${e["cost"]:,.2f}'
                  f'<br><span class="sub">{e["reason"]}</span></span><span class="sub">{datetime.fromisoformat(e["time"]).astimezone(MEL).strftime("%a %H:%M")}</span></div>')
     return (f'<div class="card">{rows}</div>' if wrap else rows) if rows else ""
+
+
+def race_error_card(e):
+    print("Race section failed:", repr(e))
+    return ('<div class="card"><b>The Race section couldn&#39;t load right now.</b><div class="sub" style="margin-top:4px">'
+            f'{type(e).__name__}. The rest of the app still works and the bots keep running. Try again in a few minutes.</div></div>')
 
 
 def load_system(name, default):
@@ -356,8 +362,8 @@ def bot_card(n, a, champ, now_utc):
              else '<div class="sub">No diary entry yet today.</div>')
     return (f'<div class="card" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b style="font-size:1.1rem">{swatch(n)}{n}{champ_badge(n, champ)}</b>'
             f'{mood_pill(mood(a, now_utc))}</div><div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
-            f'<div class="bigv">{race.twr(a):+.2f}%</div><div class="sub">time-weighted return · ${v:,.0f} from ${a["contributed"]:,.0f} put in</div>'
-            + line("Fees paid", f'${a["fees_paid"]:,.2f}') + line("Open positions", str(len(a["positions"])))
+            f'<div class="bigv">{race.twr(a):+.2f}%</div><div class="sub">time-weighted return · ${v:,.0f} from ${a.get("contributed", 0):,.0f} put in</div>'
+            + line("Fees paid", f'${a.get("fees_paid", 0):,.2f}') + line("Open positions", str(len(a["positions"])))
             + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
             + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
 
@@ -436,8 +442,8 @@ def render_desktop():
     rdoc = None
     if rc["key"] in race.ENABLED:
         try:
-            rdoc = get("system", rc["doc"], None)
-            rdoc = rdoc if rdoc and rdoc.get("version") == race.VERSION else None  # old-format race: wait for the next bot run
+            rdoc = race.load_race(rc, create=False)  # repairs and saves any account left over from older rules
+            rdoc = race.with_defaults(rdoc) if rdoc else None
         except Exception:
             rdoc = None
     left, centre, right = st.columns([1.05, 1.6, 1.55])
@@ -534,10 +540,13 @@ def render_desktop():
 
 
 if desktop:
-    render_desktop()
+    try:
+        render_desktop()
+    except Exception as e:
+        st.markdown(race_error_card(e), unsafe_allow_html=True)
     st.stop()
 
-with race_tab:
+def render_race_tab():
     race_pick = st.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
     rc = next(r for r in race.ALL_RACES.values() if r["name"] == race_pick)
     now_utc = datetime.now(timezone.utc)
@@ -546,8 +555,8 @@ with race_tab:
         st.markdown('<div class="card sub">The crypto race is switched off for now: only the ASX race is running.</div>', unsafe_allow_html=True)
     else:
         try:
-            rdoc = get("system", rc["doc"], None)
-            rdoc = rdoc if rdoc and rdoc.get("version") == race.VERSION else None  # old-format race: wait for the next bot run
+            rdoc = race.load_race(rc, create=False)  # repairs and saves any account left over from older rules
+            rdoc = race.with_defaults(rdoc) if rdoc else None
         except Exception:
             rdoc = None
         if not rdoc:
@@ -564,7 +573,7 @@ with race_tab:
         beat = sum(1 for n in movers if race.twr(accts[n]) > bench_r)
         kpis = [("Leader", f"{swatch(lead_n)}{lead_n}", f"{race.twr(accts[lead_n]):+.2f}%"),
                 ("Next scorecard", f"{race.days_left(rdoc, now_utc)} days", f"scorecard {rdoc['scorecard']}, every 3 weeks"),
-                ("Trades", str(sum(n_trades(accts[n]) for n in movers)), f"fees ${sum(accts[n]['fees_paid'] for n in movers):,.2f}"),
+                ("Trades", str(sum(n_trades(accts[n]) for n in movers)), f"fees ${sum(accts[n].get('fees_paid', 0) for n in movers):,.2f}"),
                 ("Beating Buy and Hold", f"{beat} of {len(movers)}", f"benchmark {bench_r:+.2f}%")]
         st.markdown('<div class="kpis">' + "".join(f'<div class="kpi"><div class="label">{k}</div><div class="num">{v}</div><div class="sub">{s}</div></div>'
                                                    for k, v, s in kpis) + '</div>', unsafe_allow_html=True)
@@ -637,6 +646,13 @@ with home:
             pots[which] = max(pots[which] - amt, 0.0)
             save_json("pots", pots)
             st.rerun()
+
+
+with race_tab:
+    try:
+        render_race_tab()
+    except Exception as e:
+        st.markdown(race_error_card(e), unsafe_allow_html=True)
 
 # ---------- Suggestions ----------
 def claude_prompt(s, when):

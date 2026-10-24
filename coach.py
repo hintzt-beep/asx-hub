@@ -96,8 +96,8 @@ def racer_stats(doc):
 def run_report(now):
     stats = {}
     for key, rc in race.RACES.items():
-        doc = get("system", rc["doc"], None)
-        if doc and doc.get("version") == race.VERSION:
+        doc = race.load_race(rc, now, create=False)
+        if doc:
             stats[key] = racer_stats(doc)
     if not stats:
         print("No race data yet, no report.")
@@ -187,8 +187,8 @@ def run_picks(now, scheduled=False):
     mkt = race.Market()
     entry = {"week": week, "time": now.isoformat(), "races": {}}
     for key, rc in race.RACES.items():
-        doc = get("system", rc["doc"], None)
-        if not doc or doc.get("version") != race.VERSION:
+        doc = race.load_race(rc, now, create=False)
+        if not doc:
             continue
         race.deposit(rc, doc, now)  # make sure this Monday's $400 has landed
         a = doc["accounts"][race.COACH]

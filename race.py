@@ -113,12 +113,86 @@ def new_race(rc, now):
 
 
 def value(a):
-    return a["cash"] + sum(x["shares"] * x["mark"] for x in a["positions"])
+    return a.get("cash", 0.0) + sum(x.get("shares", 0) * x.get("mark", x.get("entry", 0.0)) for x in a.get("positions", []))
 
 
 def twr(a):
     """Time-weighted % return: growth of the money, ignoring when deposits arrived."""
-    return (a["index"] - 1) * 100
+    return (a.get("index", 1.0) - 1) * 100
+
+
+# ---------- Loading a race and bringing old data up to the current rules ----------
+ACCOUNT_FIELDS = ("cash", "positions", "trades", "keys", "benched", "contributed", "fees_paid", "index", "base", "peak", "sc_index")
+RACE_FIELDS = ("accounts", "start", "scorecard", "sc_start", "next_deposit", "history")
+OLD_START_CASH = 50000.0           # the first version of the race gave every bot $50,000
+
+
+def deposits_so_far(doc):
+    """How many Monday $400 deposits this race has already paid."""
+    k, t, nxt = 0, next_monday_9(datetime.fromisoformat(doc["start"])), datetime.fromisoformat(doc["next_deposit"])
+    while t < nxt:
+        k, t = k + 1, next_monday_9(t)
+    return k
+
+
+def stale_account(a):
+    """Missing a field of the current rules, or still on the old $50,000 rules."""
+    if not isinstance(a, dict) or any(k not in a for k in ACCOUNT_FIELDS):
+        return True
+    return a.get("contributed") == OLD_START_CASH and not a.get("trades")
+
+
+def stale_race(doc):
+    return (not isinstance(doc, dict) or doc.get("version") != VERSION or any(k not in doc for k in RACE_FIELDS)
+            or not isinstance(doc.get("accounts"), dict))
+
+
+def migrate(rc, doc):
+    """Rebuild any stale account under the current rules (start cash plus every weekly $400 already paid). Returns True if changed."""
+    changed, cash = False, rc["start_cash"] + DEPOSIT * deposits_so_far(doc)
+    for n in RACERS:
+        if stale_account(doc["accounts"].get(n)):
+            doc["accounts"][n] = new_account(cash)
+            changed = True
+    for k, default in (("coach_orders", []), ("risk_log", []), ("champion", None)):
+        if k not in doc:
+            doc[k], changed = default, True
+    return changed
+
+
+def load_race(rc, now=None, create=True, save=True):
+    """Load a race and bring it up to the current rules, saving the fix back. Raises if Supabase can't be read,
+    so a failed load never replaces a saved race. Returns None when there is no race yet and create is False."""
+    now = now or datetime.now(timezone.utc)
+    doc = get("system", rc["doc"], None)
+    if doc is None:
+        return new_race(rc, now) if create else None
+    if stale_race(doc):  # an old-format race: keep a copy, then start the current rules
+        put("system", rc["doc"] + "_v1", doc)
+        doc, changed = new_race(rc, now), True
+    else:
+        changed = migrate(rc, doc)
+    if changed and save:
+        put("system", rc["doc"], doc)
+    return doc
+
+
+def with_defaults(doc):
+    """Display-only copy safety: fill any missing field so a page can never crash on old or partial data."""
+    for a in doc.get("accounts", {}).values():
+        for k, default in (("cash", 0.0), ("positions", []), ("trades", []), ("contributed", 0.0), ("fees_paid", 0.0), ("index", 1.0),
+                           ("benched", False), ("diary", {})):
+            a.setdefault(k, default)
+        for x in a["positions"]:
+            for k, default in (("ticker", "?"), ("shares", 0), ("entry", 0.0)):
+                x.setdefault(k, default)
+            x.setdefault("mark", x["entry"])
+        for t in a["trades"]:
+            for k, default in (("side", ""), ("ticker", ""), ("reason", ""), ("time", doc.get("start", "1970-01-01T00:00:00+00:00")), ("price", 0.0)):
+                t.setdefault(k, default)
+    for k, default in (("history", []), ("risk_log", []), ("scorecard", 1), ("champion", None)):
+        doc.setdefault(k, default)
+    return doc
 
 
 def update_index(a):
@@ -355,13 +429,13 @@ def standings(doc):
 
 
 def trades_word(a):
-    k = sum(1 for t in a["trades"] if t["side"] in ("BUY", "SELL"))
+    k = sum(1 for t in a.get("trades", []) if t.get("side") in ("BUY", "SELL"))
     return f"{k} trade{'' if k == 1 else 's'}"
 
 
 def standings_text(doc):
     A = doc["accounts"]
-    return "\n".join(f"{i}. {n} {twr(A[n]):+.1f}% (${v:,.0f} from ${A[n]['contributed']:,.0f} in, fees ${A[n]['fees_paid']:,.2f}, "
+    return "\n".join(f"{i}. {n} {twr(A[n]):+.1f}% (${v:,.0f} from ${A[n].get('contributed', 0):,.0f} in, fees ${A[n].get('fees_paid', 0):,.2f}, "
                      f"{trades_word(A[n])})" for i, (n, v) in enumerate(standings(doc), 1))
 
 
@@ -433,8 +507,9 @@ def daily_summary(notify, now):
     parts = []
     for rc in RACES.values():
         doc = get("system", rc["doc"], None)
-        if not doc:
+        if not doc or stale_race(doc):
             continue
+        with_defaults(doc)
         parts.append(f"{rc['name']} (scorecard in {days_left(doc, now)} days)\n{standings_text(doc)}")
         for n, a in doc["accounts"].items():
             today = [t for t in a["trades"] if datetime.fromisoformat(t["time"]).astimezone(MEL).date() == mel.date()]
@@ -461,18 +536,10 @@ def run(notify, asx_open, now=None):
     mkt = Market()
     for rc in RACES.values():
         try:
-            doc = get("system", rc["doc"], None)
+            doc = load_race(rc, now, save=False)  # saved below, after this run's trades
         except Exception as e:
             print("Race load failed:", rc["key"], e)
             continue  # never replace a saved race with a fresh one
-        if doc and doc.get("version") != VERSION:  # old $50,000 race: keep a copy, then start the new money model
-            try:
-                put("system", rc["doc"] + "_v1", doc)
-            except Exception as e:
-                print("Race archive failed:", rc["key"], e)
-                continue
-            doc = None
-        doc = doc or new_race(rc, now)
         events = []
         RISK["check"] = lambda rc_, a, n, t, doc=doc: risk_gate(doc, rc_, a, n, t, now)
         try:
