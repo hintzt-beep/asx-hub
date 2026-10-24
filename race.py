@@ -279,7 +279,7 @@ def trade_line(name, t):
 def daily_summary(notify, now):
     """One push after 5pm Melbourne with each race's standings and every bot's trades that day."""
     mel = now.astimezone(MEL)
-    if mel.hour < SUMMARY_HOUR:
+    if mel.hour < SUMMARY_HOUR or mel.weekday() >= 5:  # no summary on Saturdays and Sundays
         return
     state = get("system", "race_summary_state", None) or {}
     if state.get("day") == mel.date().isoformat():
