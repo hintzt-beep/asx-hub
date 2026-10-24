@@ -218,7 +218,7 @@ def trade_word(r, asx_closing):
 
 # ---------- Markets ----------
 now = datetime.now(MEL)
-chips, asx_open, asx_closing = "", False, False
+chips, asx_open, asx_closing, mkts = "", False, False, []
 for name, tz, oh, om, ch, cm in [("ASX", "Australia/Sydney", 10, 0, 16, 0),
                                  ("TSX", "America/Toronto", 9, 30, 16, 0),
                                  ("NYSE", "America/New_York", 9, 30, 16, 0)]:
@@ -227,6 +227,7 @@ for name, tz, oh, om, ch, cm in [("ASX", "Australia/Sydney", 10, 0, 16, 0),
         asx_open, asx_closing = is_open, is_open and left < 900
     local = datetime.now(ZoneInfo(tz)).strftime("%H:%M")
     word = "closes" if is_open else "opens"
+    mkts.append((name, is_open, left))
     chips += f'<div class="chip"><span class="dot" style="background:{GREEN if is_open else GREY}"></span><b>{name}</b> {local} · {word} in {fmt_left(left)}</div>'
 chips += f'<div class="chip"><span class="dot" style="background:{GREEN}"></span><b>Crypto</b> always open</div>'
 
@@ -243,24 +244,25 @@ ups = int((pnl["gl"] > 0).sum()) if len(pnl) else 0
 downs = int((pnl["gl"] < 0).sum()) if len(pnl) else 0
 
 # ---------- Top of screen ----------
-st.markdown(f'<div class="row" style="justify-content:flex-start; gap:12px">{BEAR_SVG}<div class="brand">{APP_NAME}</div></div>', unsafe_allow_html=True)
 prefs = load_json("prefs", {})
-top_l, top_m, top_r = st.columns([3, 1.3, 1])
-top_l.markdown(f'<div class="sub" style="padding-top:10px">{now.strftime("%a %d %b, %H:%M")}</div>', unsafe_allow_html=True)
-desktop = top_m.toggle("Desktop view", value=bool(prefs.get("desktop", False)), key="desktop_view")
-if desktop != bool(prefs.get("desktop", False)):
-    save_json("prefs", {**prefs, "desktop": desktop})
-if top_r.button("Log out"):
-    del st.session_state["user"]
-    st.rerun()
-st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
+if "desktop_view" not in st.session_state:
+    st.session_state.desktop_view = bool(prefs.get("desktop", False))
+desktop = st.session_state.desktop_view
 
-if desktop:  # one screen, no tabs: Home and Race side by side, Portfolio and Insiders below
-    home, race_tab = st.columns(2, gap="large")
-    port, insiders = st.columns(2, gap="large")
-    for box, title in ((home, "Home"), (race_tab, "Race"), (port, "Portfolio"), (insiders, "Insiders")):
-        box.markdown(f"### {title}")
-else:
+
+def save_desktop():
+    save_json("prefs", {**prefs, "desktop": st.session_state.desktop_view})
+
+
+if not desktop:  # phone view: tabs
+    st.markdown(f'<div class="row" style="justify-content:flex-start; gap:12px">{BEAR_SVG}<div class="brand">{APP_NAME}</div></div>', unsafe_allow_html=True)
+    top_l, top_m, top_r = st.columns([3, 1.3, 1])
+    top_l.markdown(f'<div class="sub" style="padding-top:10px">{now.strftime("%a %d %b, %H:%M")}</div>', unsafe_allow_html=True)
+    top_m.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
+    if top_r.button("Log out"):
+        del st.session_state["user"]
+        st.rerun()
+    st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
     home, race_tab, port, insiders = st.tabs(["Home", "Race", "Portfolio", "Insiders"])
 
 # ---------- Race ----------
@@ -311,6 +313,167 @@ def bot_card(n, a, champ, now_utc):
             + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
             + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
 
+
+# ---------- Desktop view: the whole dashboard on one screen, no page scrolling ----------
+DESK_CSS = """<style>
+html {font-size: clamp(12px, 0.55vw + 5px, 15px);}
+header[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"] {display: none !important;}
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {overflow: hidden !important;}
+.block-container {padding: 0.45rem 0.9rem 0 !important; max-width: 100% !important;}
+[data-testid="stVerticalBlock"] {gap: 0.45rem;}
+[data-testid="stHorizontalBlock"] {gap: 0.6rem;}
+[data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style) {display: none;}
+[data-testid="stElementContainer"]:has(iframe) {position: absolute; height: 0; overflow: hidden;}
+:root {--top: 2.7rem; --bot: 24vh; --mid: calc(100vh - var(--top) - var(--bot) - 2.1rem);}
+.pn {background: #111216; border: 1px solid #3A3F47; border-radius: 12px; padding: 0.5rem 0.7rem; margin-bottom: 0.7rem; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3A3F47 transparent;}
+.pn-h {display: flex; justify-content: space-between; gap: 8px; color: #A7ADB6; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;}
+.h-mid {height: var(--mid);} .h-bot {height: var(--bot);}
+.h-lb {height: calc(var(--mid) - 35vh - 0.45rem);}
+.h-home {height: calc(var(--mid) * 0.5 - 0.25rem);} .h-hof {height: calc(var(--mid) * 0.5 - 2.5rem);}
+.tb {display: flex; align-items: center; gap: 0.7rem; white-space: nowrap; overflow: hidden;}
+.tb svg {width: 30px; height: 30px; flex: none;}
+.tb .brand {font-size: 0.95rem;}
+.mchip {font-size: 0.68rem; border: 1px solid #3A3F47; border-radius: 999px; padding: 1px 7px;}
+.tb-total {font-family: MONO; font-weight: 800; font-size: 1.1rem; white-space: nowrap;}
+.pn .lb-row {padding: 0.3rem 0.45rem;} .pn .lb-val {font-size: 0.92rem;}
+.pn .big {font-size: 1.7rem;}
+.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; padding: 0.28rem 0; border-bottom: 1px solid #3A3F47;}
+.mini:last-child {border-bottom: none;}
+.bcs {display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); gap: 0.45rem;}
+.bc {background: #0E0F12; border: 1px solid #3A3F47; border-radius: 10px; padding: 0.4rem 0.55rem;}
+.bc .v {font-family: MONO; font-weight: 800; font-size: 1.02rem; margin-top: 2px;}
+.bc .word, .mini .word {font-size: 0.56rem; padding: 2px 6px;}
+.bc .lt {font-size: 0.7rem; color: #A7ADB6; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+.stRadio label, .stToggle label {font-size: 0.8rem;}
+.stButton button {min-height: 2rem; padding: 0 0.8rem;}
+[data-testid="stPlotlyChart"] {height: 35vh; padding: 4px 4px 0; margin: 0;}
+[data-testid="stElementContainer"]:has([data-testid="stPlotlyChart"]), [data-testid="stFullScreenFrame"]:has([data-testid="stPlotlyChart"]) {height: 35vh !important; min-height: 0 !important; flex: 0 0 35vh !important; overflow: hidden;}
+[data-testid="stPlotlyChart"] > div, [data-testid="stPlotlyChart"] .js-plotly-plot, [data-testid="stPlotlyChart"] .plot-container {height: 100% !important;}
+</style>""".replace("MONO", "'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace")
+
+
+def pn(title, body, cls, right=""):
+    return f'<div class="pn {cls}"><div class="pn-h"><span>{title}</span><span>{right}</span></div>{body}</div>'
+
+
+def mini(left, right):
+    return f'<div class="mini"><span>{left}</span><span style="text-align:right">{right}</span></div>'
+
+
+def bot_mini(n, a, now_utc):
+    v = race.value(a)
+    last = a["trades"][-1] if a["trades"] else None
+    done = {"BUY": "Bought", "SELL": "Sold", "BENCHED": "Benched"}
+    lt = (f'<b>{done.get(last["side"], last["side"])} {last["ticker"]}</b> · {datetime.fromisoformat(last["time"]).astimezone(MEL).strftime("%a %H:%M")}: {last["reason"]}'
+          if last else "No trades yet.")
+    return (f'<div class="bc" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b>{swatch(n)}{n}</b>{mood_pill(mood(a, now_utc))}</div>'
+            f'<div class="v">${v:,.0f} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></div><div class="lt">{lt}</div></div>')
+
+
+def render_desktop():
+    st.markdown(DESK_CSS, unsafe_allow_html=True)
+    now_utc = datetime.now(timezone.utc)
+    total = sum(pots.values())
+    mchips = "".join(f'<span class="mchip"><span class="dot" style="background:{GREEN if o else GREY}"></span>{n} {"open" if o else "opens " + fmt_left(left)}</span>'
+                     for n, o, left in mkts) + f'<span class="mchip"><span class="dot" style="background:{GREEN}"></span>Crypto open</span>'
+    c_brand, c_total, c_race, c_view, c_out = st.columns([6.2, 1.3, 1.7, 1.25, 0.8], vertical_alignment="center")
+    c_brand.markdown(f'<div class="tb">{BEAR_SVG}<span class="brand">{APP_NAME}</span><span class="sub">{now.strftime("%a %d %b, %H:%M")}</span>{mchips}</div>', unsafe_allow_html=True)
+    c_total.markdown(f'<div class="sub" style="line-height:1">Total</div><div class="tb-total">${total:,.0f}</div>', unsafe_allow_html=True)
+    pick_race = c_race.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
+    c_view.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
+    if c_out.button("Log out"):
+        del st.session_state["user"]
+        st.rerun()
+
+    rc = next(r for r in race.ALL_RACES.values() if r["name"] == pick_race)
+    rdoc = None
+    if rc["key"] in race.ENABLED:
+        try:
+            rdoc = get("system", rc["doc"], None)
+        except Exception:
+            rdoc = None
+    left, centre, right = st.columns([1.05, 1.6, 1.55])
+
+    # left: Home summary, Hall of Fame, pings
+    pots_html = "".join(mini(f'{POT_NAME[k]}<br><span class="sub">${cash[k]:,.0f} free</span>', f"<b>${pots[k]:,.0f}</b>") for k in pots)
+    left.markdown(pn("Home", f'<div class="sub">Hi {USER}</div><div class="big">${total:,.0f}</div>'
+                     f'<div style="margin:2px 0 6px">Today {money(total_pl)} <span class="sub">{ups} up · {downs} down</span></div>{pots_html}', "h-home"), unsafe_allow_html=True)
+    try:
+        hof = [e for e in (get("system", "hall_of_fame", None) or []) if e.get("race") == rc["key"]]
+    except Exception:
+        hof = []
+    hof_html = "".join(mini(f'Season {e["season"]}<br><span class="sub">{datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}</span>',
+                            f'{swatch(e["winner"])}<b>{e["winner"]}</b> {next(x["pct"] for x in e["standings"] if x["name"] == e["winner"]):+.1f}%') for e in reversed(hof))
+    ends = f' Season {rdoc["season"]} ends {race.season_end(rdoc).astimezone(MEL).strftime("%a %d %b")}.' if rdoc else ""
+    left.markdown(pn("Hall of Fame", hof_html or f'<div class="sub">No finished seasons yet.{ends}</div>', "h-hof", rc["name"]), unsafe_allow_html=True)
+    try:
+        rset = get("system", "race_settings", None) or {}
+    except Exception:
+        rset = None
+    if rset is not None:
+        modes = {"trade": "Pings: every trade", "summary": "Pings: daily summary"}
+        cur = rset.get("pings", "summary")
+        pings = left.radio("Pings", list(modes), index=list(modes).index(cur), format_func=modes.get, horizontal=True, key="pings", label_visibility="collapsed")
+        if pings != cur:
+            try:
+                put("system", "race_settings", {**rset, "pings": pings})
+            except Exception:
+                left.error("Could not save the setting.")
+
+    # centre: leaderboard, then the chart; right: racer cards
+    if not rdoc:
+        msg = "The crypto race is switched off." if rc["key"] not in race.ENABLED else "The race starts on the next bot run."
+        centre.markdown(pn(f'{rc["name"]} race', f'<div class="sub">{msg}</div>', "h-mid"), unsafe_allow_html=True)
+        right.markdown(pn("Racers", '<div class="sub">No racers yet.</div>', "h-mid"), unsafe_allow_html=True)
+    else:
+        table, champ = race.standings(rdoc), rdoc.get("champion")
+        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
+                       f'<span class="lb-right"><span class="lb-val">${v:,.0f}</span> {money(v - race.START_CASH)} '
+                       f'<span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>' for i, (n, v) in enumerate(table, 1))
+        centre.markdown(pn(f'{rc["name"]} leaderboard', rows, "h-lb", f'Season {rdoc["season"]} · {race.days_left(rdoc, now_utc)} days left'), unsafe_allow_html=True)
+        hist = rdoc.get("history", [])
+        xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
+        fig = go.Figure()
+        for n, _ in table:
+            fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n, hovertemplate="%{y:$,.0f}",
+                                     line=dict(width=1.5, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid")))
+        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=10))
+        fig.update_layout(autosize=True, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                          font=dict(color="#A7ADB6", size=10), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0, font=dict(size=10)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
+        centre.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "responsive": True})
+        right.markdown(pn("Racers", '<div class="bcs">' + "".join(bot_mini(n, rdoc["accounts"][n], now_utc) for n, _ in table) + "</div>", "h-mid",
+                          "mood · value · last trade"), unsafe_allow_html=True)
+
+    # bottom strip: Portfolio and Insiders
+    bot_l, bot_r = st.columns(2)
+    bought = "".join(mini(f'<b>{r["ticker"]}</b> <span class="sub">paid ${fp(float(r["entry"]))}, now ${fp(float(r["now"]))}</span>', money(r["gl"]))
+                     for _, r in pnl.iterrows()) or '<div class="sub">Nothing bought today.</div>'
+    sh_sales, sh_buys = (shadow_log or {}).get("sales", []), (shadow_log or {}).get("buys", [])
+    sh_pl = sum(s["gain"] for s in sh_sales) + sum(b["shares"] * (live_price(b["ticker"]) or b.get("mark", b["price"])) - b["cost"] for b in sh_buys)
+    sh_brk = sum(s.get("costs", 10.0) for s in sh_sales) + sum(b.get("brokerage", 10.0) for b in sh_buys)
+    moves = sorted([(s["date"], "SELL", s["ticker"], s["reason"]) for s in sh_sales] + [(b["date"], "BUY", b["ticker"], f'Best Long term idea, score {b["score"]}.') for b in sh_buys], reverse=True)
+    moves_html = "".join(mini(f'{pill(w)} <b>{tk}</b> <span class="sub">{why}</span>', f'<span class="sub">{when}</span>') for when, w, tk, why in moves)
+    bot_l.markdown(pn("Portfolio", f'<div class="label" style="margin-top:0">Bought today</div>{bought}<div class="label">Shadow bot (paper)</div>'
+                      + mini("Total paper profit or loss", money(sh_pl)) + mini("Brokerage paid", f"${sh_brk:,.0f}")
+                      + (moves_html or '<div class="sub">No shadow moves yet.</div>'), "h-bot"), unsafe_allow_html=True)
+    try:
+        ins = [t for t in celeb_trades()[:40] if isinstance(t, dict)]
+        ins_err = ""
+    except Exception as e:
+        ins, ins_err = [], f"Couldn't load right now: {e}"
+    ins_rows = ""
+    for t in ins:
+        kind_txt = str(pick(t, "type", "transaction_type", "transaction", "side")).lower()
+        w = "BUY" if ("purchase" in kind_txt or "buy" in kind_txt) else "SELL" if ("sale" in kind_txt or "sell" in kind_txt) else "HOLD"
+        ins_rows += mini(f'{pill(w)} <b>{pick(t, "ticker", "symbol") or "?"}</b> <span class="sub">{pick(t, "member", "member_name", "name", "politician", "representative", "senator")}</span>',
+                         f'<span class="sub">{pick(t, "amount", "amount_range", "range")} · {pick(t, "transaction_date", "traded", "trade_date", "date")}</span>')
+    bot_r.markdown(pn("Insiders", ins_rows or f'<div class="sub">{ins_err or "No trades to show."}</div>', "h-bot", "US politicians' trades, Bargo"), unsafe_allow_html=True)
+
+
+if desktop:
+    render_desktop()
+    st.stop()
 
 with race_tab:
     race_pick = st.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
