@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
+import race
 from shadow import decide as shadow_decide, holding_key
 from store import get, put
 
@@ -313,6 +314,7 @@ def check():
             check_user(sent, user, topic, asx_open, mins_left)
 
         shadow_run()
+        race.run(notify_ty, asx_open)  # paper bot race, pretend money only
 
         # 3. New BUY setups, sent to everyone (old alerts only)
         names = []

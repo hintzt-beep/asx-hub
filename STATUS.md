@@ -2,8 +2,8 @@
 
 ## Completed
 - Dashboard uses a wide layout with responsive padding (no max-width cap).
-- Watchlist tab: add/remove tickers, BUY/HOLD/SELL per ticker (long-term signal), saved per user under the `watchlist` key in the store.
-- Portfolio: Remove button on each Bought today card, plus Clear all test trades (asks to confirm). Both save to the `trades` key.
+- Watchlist tab: add tickers, BUY/HOLD/SELL per ticker (long-term signal), saved per user under the `watchlist` key in the store.
+- Portfolio: Clear all test trades (asks to confirm) saves to the `trades` key.
 - alerts workflow has a concurrency group so two runs can't both open the same position.
 - Dark mechanical re-skin (replaces the Matrix look; CSS, `.streamlit/config.toml` and hero markup only): #0A0A0C background, steel-grey #3A3F47 borders, blood-red #C1121F accent with soft red glow on hero, tabs and buttons, chrome-grey secondary text, Orbitron headings (Google Fonts), monospace numbers. App name IRONPAW and an inline-SVG robot bear (one glowing red eye) on the login and Home hero cards. BUY green, HOLD amber, SELL red (#EF4444, brighter than the accent) unchanged. No logic changes.
 - Old ntfy alerts are off (`OLD_ALERTS = False` in alerter.py; code kept). Bot actions push to Ty's topic via `notify_ty`.
@@ -12,12 +12,13 @@
 
 - One login: a single Admin user (password from `TY_PASSWORD`). Nathan's login is removed. Admin's data still lives under the `Ty` owner key in Supabase so nothing needed migrating; Nathan's saved data is left in Supabase untouched.
 - Race step 1 (cleanup): removed the Remove buttons on holdings and Bought today, the Home bot-moves section, and the old single paper bot and its Paper tab (its saved `system/paper_account` data is left in Supabase, unused). Shadow bot stays on Portfolio.
+- Race step 2 (`race.py`, hooked into `alerter.py`): a STOCKS race (the 30 ASX names, trades only while the ASX is open and prices are fresh) with 5 bots plus a Buy and Hold racer (all-in VAS.AX on day one, never trades). Each racer starts each 3-week season with $50,000. Shared rules: $10 brokerage per stock trade, 0.1% slippage on every fill, max 25% per position, a stop on every position, one buy per ticker per day and never while holding it, loss brake benches a bot at -15% until the reset. Season end: results to `hall_of_fame`, best bot gets the champion badge, accounts reset, final standings pushed. Pings: every trade (default) or one daily summary after 5pm Melbourne (`race_settings.pings`). The CRYPTO race is built (0.1% fee, BTC-USD benchmark) but switched off: ASX only for now (`ENABLED` in race.py). Bot strategies come in step 3.
 
 ## Current task
-Bot race, step 2 of 5 next: two races, five bots plus a Buy and Hold benchmark.
+Bot race, step 3 of 5 next: the five bots' trading identities, reasons and diaries.
 
 ## Tests
-- No automated test suite. Watchlist checked headlessly with Streamlit AppTest (stubbed store and price data): add, signal, remove, per-user save all pass. Same for trade remove, clear-all confirm/cancel/delete. Paper bot: `alerter.py --once` run against a fake Supabase and fake prices, plus rule tests (sizing, 20% cap, costs, stop/target/gap/ASX-close exits, duplicate guards, failed-load safety) and the Paper tab, all passing. Notifications: unit-tested for every action type, plus a real `alerter.py --once` run with ntfy calls recorded (3 pushes, all to Ty). Shadow bot: real `alerter.py --once` against a fake Supabase and prices (sells, buys, ntfy to Ty only, no duplicates on a second run, holdings unchanged), threshold and edge-case tests, dashboard cards and section. Not run against real Supabase, real ntfy or live prices.
+- No automated test suite. Watchlist checked headlessly with Streamlit AppTest (stubbed store and price data): add, signal, remove, per-user save all pass. Same for trade remove, clear-all confirm/cancel/delete. Paper bot: `alerter.py --once` run against a fake Supabase and fake prices, plus rule tests (sizing, 20% cap, costs, stop/target/gap/ASX-close exits, duplicate guards, failed-load safety) and the Paper tab, all passing. Notifications: unit-tested for every action type, plus a real `alerter.py --once` run with ntfy calls recorded (3 pushes, all to Ty). Shadow bot: real `alerter.py --once` against a fake Supabase and prices (sells, buys, ntfy to Ty only, no duplicates on a second run, holdings unchanged), threshold and edge-case tests, dashboard cards and section. Race engine: real `alerter.py --once` against a fake Supabase (race created, no trading while the ASX is closed) plus rule tests with a controlled clock (benchmark, fees, slippage, 25% cap, stop rule, duplicate guard, risk sizing, stop/target/trailing on 5-minute bars, holiday skip, loss brake, season end and reset, ping modes, Supabase-down safety). Not run against real Supabase, real ntfy or live prices.
 
 ## Decisions
 - Watchlist signal reuses `scan_long` / `long_word`, cached 15 minutes. Tickers without 200 days of data show HOLD with "No data".
