@@ -83,6 +83,9 @@ h4 {margin: 14px 0 6px;}
 .label {color: #A7ADB6; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
 .trade {border-top: 1px solid #3A3F47; padding-top: 6px; margin-top: 6px;}
 .diary {font-style: italic; font-size: 0.85rem;}
+.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.85rem; padding: 0.35rem 0; border-bottom: 1px solid #3A3F47;}
+.mini:last-child {border-bottom: none;}
+.mini .word {font-size: 0.6rem; padding: 2px 7px;}
 h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif !important; letter-spacing: 0.04em;}
 .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
@@ -281,6 +284,18 @@ def lb_row(i, n, a, champ):
     return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
             f'<span class="lb-right"><span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span><br>'
             f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
+
+
+def risk_log_html(rdoc, n=10):
+    """The last n risk-manager decisions, newest first."""
+    rows = ""
+    for e in reversed(rdoc.get("risk_log", [])[-n:]):
+        ok = e["decision"] == "approve"
+        c = GREEN if ok else RED
+        rows += (f'<div class="mini"><span><span class="word" style="background:{c}22; color:{c}; border:1px solid {c}66;">'
+                 f'{"APPROVED" if ok else "BLOCKED"}</span> <b>{e["bot"]}</b> {e["ticker"]} ${e["cost"]:,.2f}'
+                 f'<br><span class="sub">{e["reason"]}</span></span><span class="sub">{datetime.fromisoformat(e["time"]).astimezone(MEL).strftime("%a %H:%M")}</span></div>')
+    return f'<div class="card">{rows}</div>' if rows else ""
 
 
 def hof_view(e):
@@ -540,6 +555,8 @@ with race_tab:
                           legend=dict(orientation="h", y=-0.18, font=dict(size=11)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         st.markdown('<div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
+        st.markdown("#### Risk manager")
+        st.markdown(risk_log_html(rdoc) or '<div class="card sub">No decisions yet. The risk manager checks every trade a bot wants to open.</div>', unsafe_allow_html=True)
     st.markdown("#### Hall of Fame")
     try:
         hof = get("system", "hall_of_fame", None) or []
@@ -594,8 +611,93 @@ with home:
             st.rerun()
 
 # ---------- Suggestions ----------
+def load_system(name, default):
+    try:
+        return get("system", name, None) or default
+    except Exception:
+        return default
+
+
+def claude_prompt(s, when):
+    return (f"In the Iron Paw repo (hintzt-beep/asx-hub), change {s['bot']}'s rules in the {s['race'].upper()} race "
+            f"(the bots are in bots.py, the shared rules in race.py): {s['change']}\n"
+            f"Why, from the Coach report on {when}: {s['why']}\n"
+            f"Evidence: {s['trades']} closed trades ({s['confidence']} confidence).\n"
+            "Paper money only. Keep every shared safety rule (stop loss on every position, max 25% per position, no trade if fees are "
+            "over 2%, duplicate guard, loss brake) and the risk manager. Keep the change small, test with alerter.py --once and "
+            "coach.py, then commit and push to main and report the files changed.")
+
+
+def picks_html(entry):
+    out = ""
+    for key, res in entry.get("races", {}).items():
+        rc = race.ALL_RACES[key]
+        for o in res.get("picks", []):
+            name = o["ticker"].replace(".AX", "").replace("-AUD", "")
+            size = f'{o["units"]:.6f} at ${o["price"]:,.2f} AUD' if rc["crypto"] else f'{o["units"]} shares at ${o["price"]:,.2f}'
+            out += (f'<div class="card"><div class="row"><b>{rc["name"]} · {name}</b>{pill("BUY")}</div>'
+                    + line(f'{rc["broker"]} order', f'about ${o["dollars"]:,.2f} ({size})') + line("Stop loss", f'${o["stop"]:,.2f}')
+                    + line("Fee", f'${o["fee"]:,.2f}') + f'<div class="sub" style="margin-top:6px">{o["reason"]}</div></div>')
+        if not res.get("picks"):
+            out += f'<div class="card sub"><b>{rc["name"]}:</b> no picks this week. {res.get("no_pick_reason", "")} Saving ${res.get("cash", 0):,.2f}.</div>'
+        for p in res.get("dropped", []):
+            out += f'<div class="card sub"><b>{rc["name"]} · {p["ticker"]}</b> was suggested but not placed: {p["why"]}.</div>'
+    return out
+
+
 with sugg:
-    st.markdown('<div class="card sub">No Coach reports yet. The Coach will post a daily report and rule-change ideas here.</div>', unsafe_allow_html=True)
+    reports = load_system("coach_reports", [])
+    if not reports:
+        st.markdown('<div class="card sub">No Coach reports yet. The Coach writes one each day at 5:30pm Melbourne.</div>', unsafe_allow_html=True)
+    else:
+        rep_ = reports[-1]
+        when = datetime.fromisoformat(rep_["time"]).astimezone(MEL).strftime("%a %d %b, %H:%M")
+        lists = "".join(f'<div class="label">{t}</div>' + "".join(f'<div class="sub">· {x}</div>' for x in rep_.get(k, []))
+                        for t, k in (("What's working", "working"), ("What isn't", "not_working")) if rep_.get(k))
+        st.markdown(f'<div class="card"><div class="row"><b style="font-size:1.1rem">Coach report</b><span class="sub">{when}</span></div>'
+                    f'<div style="margin-top:6px">{rep_["summary"]}</div>{lists}</div>', unsafe_allow_html=True)
+        st.markdown("#### Suggestions")
+        if not rep_.get("suggestions"):
+            st.markdown('<div class="card sub">No rule changes suggested in this report.</div>', unsafe_allow_html=True)
+        for s in rep_.get("suggestions", []):
+            st.markdown(f'<div class="card"><div class="row"><b>{swatch(s["bot"])}{s["bot"]} · {s["race"].upper()}</b>'
+                        f'<span class="sub">{s["trades"]} trades · {s["confidence"]} confidence</span></div>'
+                        f'<div style="margin-top:6px"><b>Change:</b> {s["change"]}</div><div class="sub" style="margin-top:4px">Why: {s["why"]}</div></div>',
+                        unsafe_allow_html=True)
+            status = s.get("status", "new")
+            if status == "new":
+                b1, b2 = st.columns(2)
+                for btn, new_status in ((b1, "approved"), (b2, "dismissed")):
+                    if btn.button("Approve" if new_status == "approved" else "Dismiss", key=f"{new_status}-{s['id']}"):
+                        fresh = load_system("coach_reports", [])
+                        for r_ in fresh:
+                            for x in r_.get("suggestions", []):
+                                if x.get("id") == s["id"]:
+                                    x["status"] = new_status
+                        try:
+                            put("system", "coach_reports", fresh)
+                        except Exception:
+                            st.error("Could not save. Try again.")
+                        st.rerun()
+            elif status == "approved":
+                st.markdown('<div class="sub">Approved. Nothing changes until you run this prompt in Claude Code:</div>', unsafe_allow_html=True)
+                st.code(claude_prompt(s, when), language=None)
+            else:
+                st.markdown('<div class="sub">Dismissed.</div>', unsafe_allow_html=True)
+    st.markdown("#### This week's Coach's Picks")
+    picks = load_system("coach_picks", [])
+    if picks:
+        st.markdown(f'<div class="sub" style="margin-bottom:6px">Week {picks[-1]["week"]} · paper trades in the Coach\'s Picks account</div>'
+                    + picks_html(picks[-1]), unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="card sub">No picks yet. The Coach picks on Monday at 9:30am Melbourne.</div>', unsafe_allow_html=True)
+    if len(reports) > 1:
+        st.markdown("#### Past reports")
+        for r_ in reversed(reports[:-1]):
+            with st.expander(datetime.fromisoformat(r_["time"]).astimezone(MEL).strftime("%a %d %b, %H:%M")):
+                st.markdown(r_["summary"])
+                for s in r_.get("suggestions", []):
+                    st.markdown(f"- **{s['bot']} ({s['race']})**: {s['change']} ({s['trades']} trades, {s['confidence']} confidence, {s.get('status', 'new')})")
 
 # ---------- Portfolio ----------
 with port:

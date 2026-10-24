@@ -1,0 +1,31 @@
+name: coach
+on:
+  schedule:
+    - cron: "30 6 * * *"     # daily report, 5:30pm Melbourne (AEDT)
+    - cron: "30 22 * * 0"    # Coach's Picks, Monday 9:30am Melbourne in daylight saving (AEDT)
+    - cron: "30 23 * * 0"    # Coach's Picks, Monday 9:30am Melbourne in standard time (AEST)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "report or picks"
+        type: choice
+        options: [report, picks]
+        default: report
+concurrency:
+  group: alerts             # shares the lock with the alerts run, so they never write the race at the same time
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install yfinance pandas anthropic
+      - run: python coach.py ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '30 6 * * *' && 'report' || 'picks --scheduled') }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NTFY_TOPIC_TY: ${{ secrets.NTFY_TOPIC_TY }}

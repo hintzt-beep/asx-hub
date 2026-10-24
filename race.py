@@ -381,6 +381,31 @@ def finish_scorecard(rc, doc, now, notify):
     return doc
 
 
+def risk_gate(doc, rc, a, name, trade, now):
+    """Ask the AI risk manager about a trade a bot wants to open, and log the decision. Fails safe (block)."""
+    import ai
+    today = now.astimezone(MEL).date()
+    realised = sum(t.get("pnl", 0.0) for t in a["trades"]
+                   if t["side"] == "SELL" and datetime.fromisoformat(t["time"]).astimezone(MEL).date() == today)
+    sell_fee = fee(rc, trade["units"] * trade["stop"]) or fee(rc, MAX_STOCK_TRADE)
+    loss_if_stopped = trade["units"] * (trade["price"] - trade["stop"] * (1 - SLIP)) + trade["fee"] + sell_fee
+    total = value(a)
+    payload = {"race": rc["name"], "broker": rc["broker"], "bot": name,
+               "trade": {**trade, "sector": ai.sector(trade["ticker"]), "fee_pct_of_trade": round(trade["fee"] / trade["cost"] * 100, 2),
+                         "loss_if_stopped": round(loss_if_stopped, 2), "loss_if_stopped_pct_of_account": round(loss_if_stopped / total * 100, 2)},
+               "account": {"value": round(total, 2), "cash": round(a["cash"], 2), "money_put_in": a["contributed"],
+                           "time_weighted_return_pct": round(twr(a), 2), "loss_brake_on": a["benched"]},
+               "open_positions": [{"ticker": x["ticker"], "sector": ai.sector(x["ticker"]), "value": round(x["shares"] * x["mark"], 2),
+                                   "pnl": round((x["mark"] - x["entry"]) * x["shares"], 2)} for x in a["positions"]],
+               "today": {"realised_pnl": round(realised, 2),
+                         "unrealised_pnl": round(sum((x["mark"] - x["entry"]) * x["shares"] for x in a["positions"]), 2)}}
+    ok, why = ai.risk_review(payload)
+    log = doc.setdefault("risk_log", [])
+    log.append({"time": now.isoformat(), "bot": name, "ticker": trade["ticker"], "cost": trade["cost"], "decision": "approve" if ok else "block", "reason": why})
+    doc["risk_log"] = log[-50:]
+    return ok, why
+
+
 def trade_line(name, t):
     if t["side"] == "BENCHED":
         return f"{name} is benched: {t['reason'][:1].lower()}{t['reason'][1:]}"
@@ -439,6 +464,7 @@ def run(notify, asx_open, now=None):
             doc = None
         doc = doc or new_race(rc, now)
         events = []
+        RISK["check"] = lambda rc_, a, n, t, doc=doc: risk_gate(doc, rc_, a, n, t, now)
         try:
             deposit(rc, doc, now)
             tick(rc, doc, mkt, now, asx_open, events)
@@ -449,6 +475,7 @@ def run(notify, asx_open, now=None):
                 doc = finish_scorecard(rc, doc, now, notify)
         except Exception as e:
             print("Scorecard failed:", rc["key"], e)
+        RISK["check"] = None
         try:
             put("system", rc["doc"], doc)
         except Exception as e:
