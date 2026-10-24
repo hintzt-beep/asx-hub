@@ -284,10 +284,10 @@ def lb_row(i, n, a, champ, compact=False):
     pct = f'<span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span>'
     if compact:
         return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
+                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a["fees_paid"]:,.2f} · {race.trades_word(a)}</span></span></div>')
     return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
             f'<span class="lb-right">{pct}<br>'
-            f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
+            f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {race.trades_word(a)}</span></span></div>')
 
 
 def risk_log_html(rdoc, n=10, wrap=True):

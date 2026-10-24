@@ -354,10 +354,15 @@ def standings(doc):
     return sorted(((n, value(a)) for n, a in doc["accounts"].items()), key=lambda x: -twr(doc["accounts"][x[0]]))
 
 
+def trades_word(a):
+    k = sum(1 for t in a["trades"] if t["side"] in ("BUY", "SELL"))
+    return f"{k} trade{'' if k == 1 else 's'}"
+
+
 def standings_text(doc):
     A = doc["accounts"]
     return "\n".join(f"{i}. {n} {twr(A[n]):+.1f}% (${v:,.0f} from ${A[n]['contributed']:,.0f} in, fees ${A[n]['fees_paid']:,.2f}, "
-                     f"{sum(1 for t in A[n]['trades'] if t['side'] in ('BUY', 'SELL'))} trades)" for i, (n, v) in enumerate(standings(doc), 1))
+                     f"{trades_word(A[n])})" for i, (n, v) in enumerate(standings(doc), 1))
 
 
 def finish_scorecard(rc, doc, now, notify):
@@ -435,6 +440,11 @@ def daily_summary(notify, now):
             today = [t for t in a["trades"] if datetime.fromisoformat(t["time"]).astimezone(MEL).date() == mel.date()]
             if today:
                 parts.append("\n".join(trade_line(n, t) for t in today))
+        blocked = [e for e in doc.get("risk_log", [])
+                   if e["decision"] == "block" and datetime.fromisoformat(e["time"]).astimezone(MEL).date() == mel.date()]
+        if blocked:
+            parts.append(f"Risk manager blocked {len(blocked)} {rc['name']} trade{'s' if len(blocked) != 1 else ''} today:\n"
+                         + "\n".join(f"{e['bot']} {e['ticker']}: {e['reason']}" for e in blocked))
     put("system", "race_summary_state", {"day": mel.date().isoformat()})  # saved first, so a retry never double-sends
     notify("Bot race: daily summary", "\n\n".join(parts) or "No race data yet.", "bar_chart")
 
