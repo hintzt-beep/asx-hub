@@ -33,7 +33,7 @@ BOTS = ["Tyler", "Ryan", "Nathan", "Newton", "Morpheus"]
 BENCH = "Buy and Hold"
 ALL_RACES = {"stocks": {"key": "stocks", "name": "STOCKS", "doc": "race_stocks", "tickers": STOCKS, "bench": "VAS.AX", "crypto": False},
              "crypto": {"key": "crypto", "name": "CRYPTO", "doc": "race_crypto", "tickers": CRYPTO, "bench": "BTC-USD", "crypto": True}}
-ENABLED = ["stocks"]               # ASX only for now; add "crypto" to switch the 24/7 crypto race on
+ENABLED = ["stocks", "crypto"]     # both races on: STOCKS while the ASX is open, CRYPTO 24/7
 RACES = {k: ALL_RACES[k] for k in ENABLED}
 STRATEGIES = {}                    # bot name -> strategy object with .trade(); filled in by bots.py
 

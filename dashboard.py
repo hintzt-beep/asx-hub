@@ -8,7 +8,6 @@ import json
 import urllib.request
 from streamlit_autorefresh import st_autorefresh
 from store import get, put
-from shadow import decide, holding_key
 import plotly.graph_objects as go
 import race
 from bots import STYLES
@@ -117,7 +116,6 @@ def save_json(name, data):
     put(OWNER, name, data)
 
 pots = load_json("pots", {"day": 0.0, "long": 0.0, "crypto": 0.0})
-holdings = load_json("holdings", [])
 try:
     shadow_log = get("system", "shadow_log", None)
 except Exception:
@@ -174,39 +172,6 @@ def market_status(tz, oh, om, ch, cm):
     while nxt.weekday() >= 5:
         nxt = (nxt.replace(tzinfo=None) + timedelta(days=1)).replace(tzinfo=zone)
     return False, nxt.timestamp() - now.timestamp()
-
-@st.cache_data(ttl=900)
-def scan_long(ticker):
-    df = yf.download(ticker, period="1y", interval="1d", progress=False)
-    if df is None or len(df) < 200:
-        return None
-    close = clean(df)["Close"]
-    price = float(close.iloc[-1])
-    ma50, ma200 = float(close.tail(50).mean()), float(close.tail(200).mean())
-    ma50_old = float(close.iloc[-70:-20].mean())
-    mom = (price - float(close.iloc[-21])) / float(close.iloc[-21]) * 100
-    off_high = (float(close.max()) - price) / float(close.max()) * 100
-    score, why = 0, []
-    if price > ma200:
-        score += 3
-        why.append("long-term uptrend")
-    else:
-        why.append("long-term downtrend")
-    if price > ma50:
-        score += 2
-    if ma50 > ma50_old:
-        score += 2
-        why.append("getting stronger")
-    if mom > 0:
-        score += 1
-    why.append(f"{'up' if mom > 0 else 'down'} {abs(mom):.1f}% this month")
-    if 3 <= off_high <= 12 and price > ma200:
-        score += 2
-        why.append("a little below its high, a good entry")
-    return {"ticker": ticker, "price": price, "score": score, "why": ", ".join(why)}
-
-def long_word(score):
-    return "BUY" if score >= 7 else "HOLD" if score >= 4 else "SELL"
 
 @st.cache_data(ttl=60)
 def live_price(ticker):
@@ -277,29 +242,26 @@ total_pl = float(pnl["gl"].sum()) if len(pnl) else 0.0
 ups = int((pnl["gl"] > 0).sum()) if len(pnl) else 0
 downs = int((pnl["gl"] < 0).sum()) if len(pnl) else 0
 
-hold_info = []
-for h in holdings:
-    try:
-        r = scan_long(h["ticker"])
-    except Exception:
-        r = None
-    paid = float(h.get("paid") or 0)
-    dec = decide(h["qty"], paid, r["price"], r["score"], h.get("bought")) if r else None
-    if r and paid > 0:  # shadow-bot rules: SELL on a downtrend with a gain over 2%, or a loss worse than 8%
-        w = "SELL" if dec["word"] == "SELL" else "BUY" if r["score"] >= 7 else "HOLD"
-    else:
-        w = long_word(r["score"]) if r else "HOLD"
-    hold_info.append((h, r, w, dec))
-
 # ---------- Top of screen ----------
-top_l, top_r = st.columns([3, 1])
+st.markdown(f'<div class="row" style="justify-content:flex-start; gap:12px">{BEAR_SVG}<div class="brand">{APP_NAME}</div></div>', unsafe_allow_html=True)
+prefs = load_json("prefs", {})
+top_l, top_m, top_r = st.columns([3, 1.3, 1])
 top_l.markdown(f'<div class="sub" style="padding-top:10px">{now.strftime("%a %d %b, %H:%M")}</div>', unsafe_allow_html=True)
+desktop = top_m.toggle("Desktop view", value=bool(prefs.get("desktop", False)), key="desktop_view")
+if desktop != bool(prefs.get("desktop", False)):
+    save_json("prefs", {**prefs, "desktop": desktop})
 if top_r.button("Log out"):
     del st.session_state["user"]
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-race_tab, home, port, insiders = st.tabs(["Race", "Home", "Portfolio", "Insiders"])
+if desktop:  # one screen, no tabs: Home and Race side by side, Portfolio and Insiders below
+    home, race_tab = st.columns(2, gap="large")
+    port, insiders = st.columns(2, gap="large")
+    for box, title in ((home, "Home"), (race_tab, "Race"), (port, "Portfolio"), (insiders, "Insiders")):
+        box.markdown(f"### {title}")
+else:
+    home, race_tab, port, insiders = st.tabs(["Home", "Race", "Portfolio", "Insiders"])
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
@@ -431,7 +393,7 @@ with race_tab:
 # ---------- Home ----------
 with home:
     total = sum(pots.values())
-    st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Hi {USER}</div></div>{BEAR_SVG}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
+    st.markdown(f'<div class="hero"><div class="sub">Hi {USER}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
     st.markdown("#### Your pots")
@@ -453,41 +415,6 @@ with home:
 
 # ---------- Portfolio ----------
 with port:
-    st.markdown("#### What you own")
-    with st.expander("Add something you own"):
-        new_t = st.text_input("Code (like BHP, or BTC-USD for crypto)")
-        new_q = st.number_input("How many", min_value=0.0, value=0.0)
-        new_paid = st.number_input("What you paid per share ($)", min_value=0.0, value=0.0)
-        new_when = st.date_input("Bought on", value=datetime.now(MEL).date())
-        if st.button("Add it", type="primary") and new_t.strip() and new_q > 0:
-            tk = new_t.strip().upper()
-            if "." not in tk and "-" not in tk:
-                tk += ".AX"
-            item = {"ticker": tk, "qty": new_q, "bought": new_when.isoformat()}
-            if new_paid > 0:
-                item["paid"] = new_paid
-            holdings.append(item)
-            save_json("holdings", holdings)
-            st.rerun()
-    if not holdings:
-        st.markdown('<div class="card sub">Nothing added yet.</div>', unsafe_allow_html=True)
-    plain = {"BUY": "Looking strong. Fine to buy more.", "HOLD": "Keep it.", "SELL": "Trending down. Think about selling."}
-    sold_keys = {s["key"]: s for s in (shadow_log or {}).get("sales", [])}
-    for i, (h, r, w, dec) in enumerate(hold_info):
-        if r and float(h.get("paid") or 0) > 0:
-            body = (line("Paid", f"${fp(float(h['paid']))}") + line("Now", f"${fp(r['price'])}") + line("Worth", f"${r['price'] * h['qty']:,.0f}")
-                    + line("Gain / loss", f'{money(dec["gain"])} <span class="sub">({dec["pct"]:+.1f}%)</span>'))
-            body += f'<div class="sub" style="margin-top:8px">{dec["reason"]}</div>'
-            done = sold_keys.get(holding_key(h))
-            if done:
-                body += f'<div class="sub" style="margin-top:6px">The shadow bot already paper-sold this on {done["date"]}.</div>'
-        elif r:
-            body = line("Price", f"${fp(r['price'])}") + line("Worth", f"${r['price'] * h['qty']:,.0f}")
-            body += f'<div class="sub" style="margin-top:8px">{plain[w]} ({r["why"]})</div>'
-            body += '<div class="sub" style="margin-top:6px">No price paid saved for this one, so the shadow bot leaves it alone.</div>'
-        else:
-            body = '<div class="sub" style="margin-top:6px">No data. Check the code.</div>'
-        card(f'{h["ticker"]} <span class="sub">x{h["qty"]:g}</span>', w, body)
     st.markdown("#### Bought today")
     if len(pnl) == 0:
         st.markdown('<div class="card sub">Nothing bought today.</div>', unsafe_allow_html=True)
