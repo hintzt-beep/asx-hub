@@ -107,10 +107,6 @@ try:
     shadow_log = get("system", "shadow_log", None)
 except Exception:
     shadow_log = None
-try:
-    paper_acct = get("system", "paper_account", None)
-except Exception:
-    paper_acct = None
 log_df = pd.DataFrame(load_json("trades", []), columns=COLS)
 for c in ["entry", "shares", "dollars"]:
     log_df[c] = pd.to_numeric(log_df[c], errors="coerce")
@@ -325,40 +321,6 @@ for h in holdings:
         w = long_word(r["score"]) if r else "HOLD"
     hold_info.append((h, r, w, dec))
 
-def bot_moves(limit=6):
-    """Latest paper-bot and shadow-bot actions, newest first: (time, word, ticker, plain reason)."""
-    ev = []
-    utc = lambda iso: datetime.fromisoformat(iso).astimezone(MEL)
-    mel = lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M").replace(tzinfo=MEL)
-    sold_why = {"stop": "it hit the stop", "target": "it hit the target", "ASX close": "the ASX was about to close"}
-    for x in (paper_acct or {}).get("positions", []):
-        try:
-            ev.append((utc(x["opened"]), "BUY", x["ticker"], f"Paper bot bought {x['shares']:g} at ${fp(x['entry'])}. "
-                       f"Sells if it falls to ${fp(x['stop'])} or rises to ${fp(x['target'])}."))
-        except Exception:
-            pass
-    for x in (paper_acct or {}).get("closed", []):
-        try:
-            ev.append((utc(x["opened"]), "BUY", x["ticker"], f"Paper bot bought {x['shares']:g} at ${fp(x['entry'])}."))
-            ev.append((utc(x["closed"]), "SELL", x["ticker"], f"Paper bot sold {x['shares']:g} at ${fp(x['exit'])} because "
-                       f"{sold_why.get(x['reason'], 'its exit rule fired')}. {'Profit' if x['pnl'] >= 0 else 'Loss'} {money(x['pnl'])} after costs."))
-        except Exception:
-            pass
-    sold_name = {s.get("key"): s.get("ticker") for s in (shadow_log or {}).get("sales", [])}
-    for s in (shadow_log or {}).get("sales", []):
-        try:
-            ev.append((mel(s["date"]), "SELL", s["ticker"], f"Shadow bot paper-sold {s['qty']:g} at ${fp(s['price'])}. {s['reason']}"))
-        except Exception:
-            pass
-    for b in (shadow_log or {}).get("buys", []):
-        try:
-            ev.append((mel(b["date"]), "BUY", b["ticker"], f"Shadow bot paper-bought {b['shares']:g} at ${fp(b['price'])}. Best Long term idea "
-                       f"(score {b['score']}), bought with the proceeds from selling {sold_name.get(b.get('sale_key'), 'a holding')}."))
-        except Exception:
-            pass
-    return sorted(ev, key=lambda e: e[0], reverse=True)[:limit]
-
-
 # ---------- Top of screen ----------
 top_l, top_r = st.columns([3, 1])
 top_l.markdown(f'<div class="sub" style="padding-top:10px">{now.strftime("%a %d %b, %H:%M")}</div>', unsafe_allow_html=True)
@@ -367,7 +329,7 @@ if top_r.button("Log out"):
     st.rerun()
 st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
 
-home, port, watch, paper, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Paper", "Ideas", "Celebs"])
+home, port, watch, ideas, celebs = st.tabs(["Home", "Portfolio", "Watchlist", "Ideas", "Celebs"])
 
 # ---------- Home ----------
 with home:
@@ -375,12 +337,6 @@ with home:
     st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Hi {USER}</div></div>{BEAR_SVG}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
-    st.markdown("#### Latest bot moves")
-    moves = bot_moves()
-    for when, w, tk, why in moves:
-        card(tk, w, f'<div class="sub" style="margin-top:6px">{why}</div><div class="sub" style="margin-top:4px">{when.strftime("%a %d %b, %H:%M")}</div>')
-    if not moves:
-        st.markdown('<div class="card sub">All quiet.</div>', unsafe_allow_html=True)
     st.markdown("#### Your pots")
     boxes = "".join(f'<div class="card" style="flex:1; margin:0"><div class="sub">{POT_NAME[k]}</div>'
                      f'<b>${pots[k]:,.0f}</b><div class="sub">${cash[k]:,.0f} free</div></div>' for k in pots)
@@ -431,28 +387,17 @@ with port:
         elif r:
             body = line("Price", f"${fp(r['price'])}") + line("Worth", f"${r['price'] * h['qty']:,.0f}")
             body += f'<div class="sub" style="margin-top:8px">{plain[w]} ({r["why"]})</div>'
-            body += '<div class="sub" style="margin-top:6px">Remove it and add it again with what you paid to see gain or loss and the bot\'s view.</div>'
+            body += '<div class="sub" style="margin-top:6px">No price paid saved for this one, so the shadow bot leaves it alone.</div>'
         else:
             body = '<div class="sub" style="margin-top:6px">No data. Check the code.</div>'
         card(f'{h["ticker"]} <span class="sub">x{h["qty"]:g}</span>', w, body)
-        if st.button(f"Remove {h['ticker']}", key=f"rm{i}"):
-            holdings.pop(i)
-            save_json("holdings", holdings)
-            st.rerun()
     st.markdown("#### Bought today")
     if len(pnl) == 0:
         st.markdown('<div class="card sub">Nothing bought today.</div>', unsafe_allow_html=True)
-    for idx, r in pnl.iterrows():
+    for _, r in pnl.iterrows():
         w, why = trade_word(r, asx_closing)
         body = line("Paid", f"${fp(float(r['entry']))}") + line("Now", f"${fp(float(r['now']))}") + line("Gain / loss", money(r["gl"]))
         card(r["ticker"], w, body + f'<div class="sub" style="margin-top:8px">{why}</div>')
-        if st.button(f"Remove {r['ticker']}", key=f"rmt{idx}"):
-            rows = load_json("trades", [])
-            hit = next((j for j, x in enumerate(rows) if x.get("time") == r["time"] and x.get("ticker") == r["ticker"]), None)
-            if hit is not None:
-                rows.pop(hit)
-                save_json("trades", rows)
-            st.rerun()
     if len(log_df):
         if not st.session_state.get("confirm_clear"):
             if st.button("Clear all test trades"):
@@ -537,43 +482,6 @@ with watch:
             watchlist.pop(i)
             save_json("watchlist", watchlist)
             st.rerun()
-
-# ---------- Paper ----------
-with paper:
-    st.markdown("#### Paper trading")
-    st.markdown('<div class="sub">Pretend money only. No real orders are ever placed.</div>', unsafe_allow_html=True)
-    acct = paper_acct
-    if not acct:
-        st.markdown('<div class="card sub">The paper account has not started yet. It makes its first pretend buy when a BUY alert fires.</div>', unsafe_allow_html=True)
-    else:
-        pstart, ppos, pclosed = acct.get("start", 10000.0), acct.get("positions", []), acct.get("closed", [])
-        pvalue = acct["cash"] + sum(x["shares"] * x.get("mark", x["entry"]) for x in ppos)
-        pwins = sum(1 for x in pclosed if x["pnl"] > 0)
-        prate = f"{pwins / len(pclosed) * 100:.0f}%" if pclosed else "n/a"
-        st.markdown(f'<div class="hero"><div class="sub">Account value</div><div class="big">${pvalue:,.2f}</div>'
-                    f'<div class="sub">started with ${pstart:,.0f}</div><div style="margin-top:10px">Total profit or loss {money(pvalue - pstart)}</div></div>', unsafe_allow_html=True)
-        pboxes = "".join(f'<div class="card" style="flex:1; margin:0"><div class="sub">{k}</div><b>{v}</b></div>'
-                         for k, v in [("Win rate", prate), ("Trades", len(pclosed)), ("Cash free", f"${acct['cash']:,.0f}")])
-        st.markdown(f'<div class="row" style="align-items:stretch">{pboxes}</div>', unsafe_allow_html=True)
-        st.markdown("#### Open positions")
-        if not ppos:
-            st.markdown('<div class="card sub">Nothing open right now.</div>', unsafe_allow_html=True)
-        for x in ppos:
-            now_p = x.get("mark", x["entry"])
-            body = (line("Bought at", f"${fp(x['entry'])} x{x['shares']:g}") + line("Now", f"${fp(now_p)}")
-                    + line("Gain / loss so far", money((now_p - x["entry"]) * x["shares"]))
-                    + f'<div class="sub" style="margin-top:8px">Keep it. Sells if it falls to ${fp(x["stop"])} or rises to ${fp(x["target"])}.</div>')
-            card(x["ticker"], "HOLD", body)
-        st.markdown("#### Last 20 trades")
-        if not pclosed:
-            st.markdown('<div class="card sub">No finished trades yet.</div>', unsafe_allow_html=True)
-        why_sold = {"stop": "Sold because it hit the stop.", "target": "Sold because it hit the target.",
-                    "ASX close": "Sold before the ASX closed."}
-        for x in reversed(pclosed[-20:]):
-            body = (line("Bought at", f"${fp(x['entry'])}") + line("Sold at", f"${fp(x['exit'])}") + line("Shares", f"{x['shares']:g}")
-                    + line("Costs", f"${x['costs']:,.2f}") + line("Profit / loss", money(x["pnl"]))
-                    + f'<div class="sub" style="margin-top:8px">{why_sold.get(x["reason"], "Sold.")}</div>')
-            card(x["ticker"], "SELL", body)
 
 # ---------- Ideas ----------
 with ideas:

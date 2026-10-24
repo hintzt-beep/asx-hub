@@ -12,7 +12,7 @@ from store import get, put
 
 TOPICS = {"Ty": os.environ.get("NTFY_TOPIC_TY", ""), "Nathan": os.environ.get("NTFY_TOPIC_NATHAN", "")}
 CHECK_EVERY = 300
-OLD_ALERTS = False  # old ntfy alerts are off; only paper-bot actions are pushed
+OLD_ALERTS = False  # old ntfy alerts are off; only bot actions are pushed
 
 DAY_LIST = ("BHP.AX, CBA.AX, CSL.AX, WBC.AX, NAB.AX, ANZ.AX, FMG.AX, WES.AX, MQG.AX, PLS.AX, "
             "WDS.AX, TLS.AX, RIO.AX, WOW.AX, GMG.AX, STO.AX, TCL.AX, QBE.AX, ALL.AX, COL.AX, "
@@ -122,43 +122,9 @@ def last_price(ticker):
     return float(clean(df)["Close"].iloc[-1])
 
 
-# ---------- Paper trading: pretend money only. No real orders, ever. ----------
-PAPER_START = 10000.0
-PAPER_FEE = 10.0       # brokerage on each buy and each sell
-PAPER_SLIP = 0.001     # 0.1% against us on every fill
-PAPER_RISK = 0.01      # loss at the stop = 1% of account value
-PAPER_MAX_POS = 0.20   # max 20% of the account in one position
-
-
-def paper_load():
-    try:
-        acct = get("system", "paper_account", None)
-    except Exception as e:
-        print("Paper account load failed:", e)
-        return None  # never replace a saved account with a fresh one
-    if not acct:
-        acct = {"start": PAPER_START, "cash": PAPER_START, "positions": [], "closed": [], "signals": {}}
-    today = datetime.now(MEL).strftime("%Y-%m-%d")
-    if acct.get("signals", {}).get("day") != today:
-        acct["signals"] = {"day": today, "keys": []}
-    return acct
-
-
-def paper_save(acct):
-    if acct is None:
-        return
-    try:
-        put("system", "paper_account", acct)
-    except Exception as e:
-        print("Paper account save failed:", e)
-
-
-def paper_value(acct):
-    return acct["cash"] + sum(x["shares"] * x.get("mark", x["entry"]) for x in acct["positions"])
-
-
-def paper_notify(title, msg, tags="robot_face", priority="default"):
-    """Push a bot action to Ty's topic. A failed push never breaks the bot."""
+# ---------- Pushes ----------
+def notify_ty(title, msg, tags="robot_face", priority="default"):
+    """Push a bot action to Ty's topic. A failed push never breaks a bot."""
     topic = TOPICS.get("Ty", "")
     if not topic:
         print("No Ty topic set, not sent:", title, "-", msg)
@@ -166,112 +132,7 @@ def paper_notify(title, msg, tags="robot_face", priority="default"):
     try:
         push(topic, title, msg, tags, priority)
     except Exception as e:
-        print("Paper notify failed:", title, e)
-
-
-def paper_skip(acct, ticker, code, msg):
-    """Tell Ty about a trade the bot skipped or rejected, once per ticker and reason per day."""
-    skips = acct["signals"].setdefault("skips", [])
-    if f"{ticker}-{code}" in skips:
-        return
-    skips.append(f"{ticker}-{code}")
-    print(datetime.now(MEL).strftime("%H:%M"), f"PAPER SKIP {ticker}: {msg}")
-    paper_notify(f"PAPER SKIPPED {ticker}", msg, "no_entry_sign")
-
-
-def paper_open(acct, ticker, entry, stop, target, asx_open, mins_left):
-    if acct is None:
-        return
-    try:
-        is_asx = ticker.endswith(".AX")
-        if is_asx and (not asx_open or mins_left is None or mins_left < 15):
-            paper_skip(acct, ticker, "asx-window", "BUY signal ignored: the ASX is closed or closes in under 15 minutes.")
-            return  # would be force-closed straight away
-        key = f"buy-{ticker}"  # one paper buy per ticker per day, like the alerts
-        if any(x["ticker"] == ticker for x in acct["positions"]):
-            paper_skip(acct, ticker, "open", "BUY signal ignored: a paper position in this ticker is already open.")
-            return
-        if key in acct["signals"]["keys"]:
-            paper_skip(acct, ticker, "dup", "BUY signal ignored: this ticker was already bought today.")
-            return
-        fill = entry * (1 + PAPER_SLIP)
-        risk = fill - stop * (1 - PAPER_SLIP)  # loss per share if the stop fills
-        if risk <= 0:
-            paper_skip(acct, ticker, "stop", f"BUY rejected: stop ${p(stop)} is not below the entry ${p(fill)}.")
-            return
-        by_risk = (paper_value(acct) * PAPER_RISK - 2 * PAPER_FEE) / risk
-        by_cap = paper_value(acct) * PAPER_MAX_POS / fill
-        by_cash = (acct["cash"] - PAPER_FEE) / fill
-        shares = min(by_risk, by_cap, by_cash)
-        shares = math.floor(shares) if is_asx else math.floor(shares * 1e6) / 1e6
-        if shares <= 0:
-            why = min({"not enough cash": by_cash, "the 1% risk limit leaves under 1 share": by_risk,
-                       "the 20% limit leaves under 1 share": by_cap}.items(), key=lambda kv: kv[1])[0]
-            paper_skip(acct, ticker, "size", f"BUY rejected: {why}.")
-            return
-        acct["cash"] -= shares * fill + PAPER_FEE
-        acct["positions"].append({"ticker": ticker, "type": "day" if is_asx else "crypto",
-                                  "opened": datetime.now(timezone.utc).isoformat(), "entry_px": entry,
-                                  "entry": fill, "shares": shares, "stop": stop, "target": target, "mark": entry})
-        acct["signals"]["keys"].append(key)
-        print(datetime.now(MEL).strftime("%H:%M"), f"PAPER BUY {ticker}: {shares:g} at ${p(fill)}")
-        paper_notify(f"PAPER BUY {ticker}", f"Bought {shares:g} at ${p(fill)} (cost ${shares * fill + PAPER_FEE:,.2f} incl. $10 brokerage). "
-                     f"Stop ${p(stop)}, target ${p(target)}. Cash left ${acct['cash']:,.2f}.", "green_circle", "high")
-    except Exception as e:
-        print("Paper open failed:", ticker, e)
-        paper_skip(acct, ticker, "error", f"BUY failed with an error: {e}")
-
-
-def paper_close(acct, pos, px, reason):
-    fill = px * (1 - PAPER_SLIP)
-    proceeds = pos["shares"] * fill - PAPER_FEE
-    slip = pos["shares"] * (pos["entry"] - pos["entry_px"]) + pos["shares"] * (px - fill)
-    pnl = proceeds - (pos["shares"] * pos["entry"] + PAPER_FEE)
-    acct["cash"] += proceeds
-    acct["positions"].remove(pos)
-    acct["closed"].append({"ticker": pos["ticker"], "entry": round(pos["entry"], 6), "exit": round(fill, 6),
-                           "shares": pos["shares"], "costs": round(2 * PAPER_FEE + slip, 2),
-                           "pnl": round(pnl, 2), "reason": reason, "opened": pos["opened"],
-                           "closed": datetime.now(timezone.utc).isoformat()})
-    print(datetime.now(MEL).strftime("%H:%M"), f"PAPER SELL {pos['ticker']} ({reason}): P/L ${pnl:,.2f}")
-    what, tags, prio = {"stop": ("stop loss hit", "red_circle", "urgent"), "target": ("target hit", "moneybag", "high"),
-                        "ASX close": ("end-of-day close", "alarm_clock", "high")}.get(reason, (reason, "bell", "default"))
-    paper_notify(f"PAPER SELL {pos['ticker']}: {what}",
-                 f"Sold {pos['shares']:g} at ${p(fill)}. Profit/loss {'+' if pnl >= 0 else '-'}${abs(pnl):,.2f} after costs. "
-                 f"Account value ${paper_value(acct):,.2f}.", tags, prio)
-
-
-def paper_hit(pos, now_p):
-    """Stop or target touched since the position opened? Stop wins if both in one bar."""
-    df = yf.download(pos["ticker"], period="5d", interval="5m", progress=False)
-    if df is not None and len(df):
-        df = clean(df)
-        for _, r in df[df.index > pd.Timestamp(pos["opened"])].iterrows():
-            if float(r["Low"]) <= pos["stop"]:
-                return "stop", min(pos["stop"], float(r["Open"]))
-            if float(r["High"]) >= pos["target"]:
-                return "target", max(pos["target"], float(r["Open"]))
-    if now_p <= pos["stop"]:
-        return "stop", now_p
-    if now_p >= pos["target"]:
-        return "target", now_p
-    return None
-
-
-def paper_manage(acct, asx_open, mins_left):
-    if acct is None:
-        return
-    for pos in list(acct["positions"]):
-        try:
-            now_p = last_price(pos["ticker"])
-            pos["mark"] = now_p
-            hit = paper_hit(pos, now_p)
-            if hit:
-                paper_close(acct, pos, hit[1], hit[0])
-            elif pos["type"] == "day" and (not asx_open or (mins_left is not None and mins_left < 15)):
-                paper_close(acct, pos, now_p, "ASX close")
-        except Exception as e:
-            print("Paper manage failed:", pos.get("ticker"), e)
+        print("Notify failed:", title, e)
 
 
 # ---------- Shadow bot: paper mirror of Ty's real holdings. Reads them, never writes them. No real orders. ----------
@@ -325,7 +186,7 @@ def shadow_reinvest(log, sale):
         if not sale.get("no_idea_sent"):
             sale["no_idea_sent"] = True
             if shadow_save(log):
-                paper_notify(f"SHADOW: no BUY idea after selling {sale['ticker']}",
+                notify_ty(f"SHADOW: no BUY idea after selling {sale['ticker']}",
                              f"No Long term idea scores BUY right now. Holding ${sale['proceeds']:,.2f} paper cash until one does.", "hourglass")
         return
     ticker, score = idea
@@ -335,7 +196,7 @@ def shadow_reinvest(log, sale):
     if shares < 1:
         sale["reinvested"], sale["note"] = True, "Proceeds too small to buy one share."
         if shadow_save(log):
-            paper_notify(f"SHADOW: no buy after selling {sale['ticker']}", sale["note"], "warning")
+            notify_ty(f"SHADOW: no buy after selling {sale['ticker']}", sale["note"], "warning")
         return
     cost = shares * fill + SHADOW_FEE
     buy = {"ticker": ticker, "shares": shares, "price": fill, "price_px": px, "brokerage": SHADOW_FEE, "cost": cost,
@@ -347,7 +208,7 @@ def shadow_reinvest(log, sale):
         log["buys"].pop()
         sale["reinvested"] = False
         return
-    paper_notify(f"SHADOW BUY {ticker}", f"Paper bought {shares} at ${p(fill)} (cost ${cost:,.2f} incl. $10 brokerage). "
+    notify_ty(f"SHADOW BUY {ticker}", f"Paper bought {shares} at ${p(fill)} (cost ${cost:,.2f} incl. $10 brokerage). "
                  f"Best Long term idea, score {score}. Bought with the proceeds from selling {sale['ticker']}.", "green_circle", "high")
 
 
@@ -375,7 +236,7 @@ def shadow_check_holding(log, h):
         log["sold"].pop()
         log["sales"].pop()
         return
-    paper_notify(f"SHADOW SELL {tk}", f"Paper sold {qty:g} at ${p(price)}. {dec['reason']}", "red_circle", "urgent")
+    notify_ty(f"SHADOW SELL {tk}", f"Paper sold {qty:g} at ${p(price)}. {dec['reason']}", "red_circle", "urgent")
 
 
 def shadow_run():
@@ -446,26 +307,24 @@ def check_user(sent, user, topic, asx_open, mins_left):
 def check():
     sent = load_sent()
     asx_open, mins_left = asx_status()
-    paper = paper_load()
     users = {u: t for u, t in TOPICS.items() if t and OLD_ALERTS}
     try:
         for user, topic in users.items():
             check_user(sent, user, topic, asx_open, mins_left)
 
-        paper_manage(paper, asx_open, mins_left)
         shadow_run()
 
-        # 3. New BUY setups, sent to everyone
+        # 3. New BUY setups, sent to everyone (old alerts only)
         names = []
-        if asx_open:
+        if users and asx_open:
             names += [t.strip() for t in DAY_LIST.split(",")]
-        names += [t.strip() for t in CRYPTO_LIST.split(",")]
+        if users:
+            names += [t.strip() for t in CRYPTO_LIST.split(",")]
         for t in names:
             try:
                 s = day_setup(t)
                 if s:
                     entry, stop, target = s
-                    paper_open(paper, t, entry, stop, target, asx_open, mins_left)
                     for user, topic in users.items():
                         send_once(sent, f"{user}-buy-{t}", topic, f"BUY {t}",
                                   f"Breaking out. Buy at about ${p(entry)}. Sell if it drops to ${p(stop)} or rises to ${p(target)}.",
@@ -474,7 +333,6 @@ def check():
                 print("Scan failed:", t, e)
     finally:
         put("system", "alerts_sent", sent)
-        paper_save(paper)
 
 
 if __name__ == "__main__":
