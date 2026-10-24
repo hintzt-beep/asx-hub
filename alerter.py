@@ -71,7 +71,13 @@ def trend_info(ticker):
     df = yf.download(ticker, period="1y", interval="1d", progress=False)
     if df is None or len(df) < 200:
         return None, None
-    close = clean(df)["Close"]
+    return trend_score(clean(df)["Close"])
+
+
+def trend_score(close):
+    """Long-term trend score (0-10) and price from a series of daily closes (the last one is today)."""
+    if close is None or len(close) < 200:
+        return None, None
     price = float(close.iloc[-1])
     ma50 = float(close.tail(50).mean())
     ma200 = float(close.tail(200).mean())
@@ -165,19 +171,25 @@ def shadow_save(log):
         return False
 
 
-def best_long_idea(exclude):
-    """Highest-scoring BUY (score 7+) on the Long term list; the first one wins a tie."""
+def best_long_idea(exclude, score_of=None):
+    """Highest-scoring BUY (score 7+) on the Long term list; the first one wins a tie. score_of(ticker) -> (score, price)."""
     best = None
     for t in [x.strip() for x in LONG_LIST.split(",")]:
         if t == exclude:
             continue
         try:
-            score, _ = trend_info(t)
+            score, _ = (score_of or trend_info)(t)
         except Exception:
             continue
         if score is not None and score >= 7 and (best is None or score > best[1]):
             best = (t, score)
     return best
+
+
+def shadow_shares(proceeds, px):
+    """Whole shares the shadow bot can buy with sale proceeds, after $10 brokerage and 0.1% slippage: (shares, fill)."""
+    fill = px * (1 + SHADOW_SLIP)
+    return math.floor((proceeds - SHADOW_FEE) / fill), fill
 
 
 def shadow_reinvest(log, sale):
@@ -192,8 +204,7 @@ def shadow_reinvest(log, sale):
         return
     ticker, score = idea
     px = last_price(ticker)
-    fill = px * (1 + SHADOW_SLIP)
-    shares = math.floor((sale["proceeds"] - SHADOW_FEE) / fill)
+    shares, fill = shadow_shares(sale["proceeds"], px)
     if shares < 1:
         sale["reinvested"], sale["note"] = True, "Proceeds too small to buy one share."
         if shadow_save(log):

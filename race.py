@@ -60,6 +60,7 @@ class Market:
 
     def __init__(self):
         self._daily, self._intra = {}, {}
+        self.views = {}  # indicator cache for this run (bots.daily_view)
 
     def _get(self, cache, t, period, interval):
         if t not in cache:
@@ -439,29 +440,42 @@ def standings_text(doc):
                      f"{trades_word(A[n])})" for i, (n, v) in enumerate(standings(doc), 1))
 
 
-def finish_scorecard(rc, doc, now, notify):
-    """Every 3 weeks: save each racer's % for the period to the Hall of Fame and crown a champion. No reset."""
+def close_scorecard(doc):
+    """End a 3-week period: rank it, reset each loss brake's peak, crown the champion. Returns (rows, winner, start, end)."""
     A = doc["accounts"]
     rows = sorted(((n, (a["index"] / a["sc_index"] - 1) * 100) for n, a in A.items()), key=lambda x: -x[1])
     winner = next(n for n, _ in rows if n != BENCH)
-    end = scorecard_end(doc)
-    hof = get("system", "hall_of_fame", None) or []
-    if not any(e.get("race") == rc["key"] and e.get("scorecard") == doc["scorecard"] for e in hof):
-        hof.append({"race": rc["key"], "scorecard": doc["scorecard"], "start": doc["sc_start"], "end": end.isoformat(), "winner": winner,
-                    "results": [{"name": n, "pct": round(pct, 2), "value": round(value(A[n]), 2), "contributed": A[n]["contributed"],
-                                 "fees": round(A[n]["fees_paid"], 2)} for n, pct in rows]})
-        put("system", "hall_of_fame", hof)
-        notify(f"{rc['name']} scorecard {doc['scorecard']} (3 weeks)",
-               f"Champion: {winner}.\n" + "\n".join(f"{i}. {n} {pct:+.1f}%" for i, (n, pct) in enumerate(rows, 1)) + "\nThe money keeps running.",
-               "trophy", "high")
+    start, end = doc["sc_start"], scorecard_end(doc)
     for a in A.values():
         a["sc_index"], a["peak"], a["benched"] = a["index"], a["index"], False
     doc.update(scorecard=doc["scorecard"] + 1, sc_start=end.isoformat(), champion=winner)
+    return rows, winner, start, end
+
+
+def finish_scorecard(rc, doc, now, notify):
+    """Every 3 weeks: save each racer's % for the period to the Hall of Fame and crown a champion. No reset."""
+    A, number = doc["accounts"], doc["scorecard"]
+    if not any(e.get("race") == rc["key"] and e.get("scorecard") == number for e in (get("system", "hall_of_fame", None) or [])):
+        values = {n: (round(value(a), 2), a["contributed"], round(a["fees_paid"], 2)) for n, a in A.items()}
+    else:
+        values = None
+    rows, winner, start, end = close_scorecard(doc)
+    if values is None:
+        return doc
+    hof = get("system", "hall_of_fame", None) or []
+    hof.append({"race": rc["key"], "scorecard": number, "start": start, "end": end.isoformat(), "winner": winner,
+                "results": [{"name": n, "pct": round(pct, 2), "value": values[n][0], "contributed": values[n][1], "fees": values[n][2]}
+                            for n, pct in rows]})
+    put("system", "hall_of_fame", hof)
+    notify(f"{rc['name']} scorecard {number} (3 weeks)",
+           f"Champion: {winner}.\n" + "\n".join(f"{i}. {n} {pct:+.1f}%" for i, (n, pct) in enumerate(rows, 1)) + "\nThe money keeps running.",
+           "trophy", "high")
     return doc
 
 
-def risk_gate(doc, rc, a, name, trade, now):
-    """Ask the AI risk manager about a trade a bot wants to open, and log the decision. Fails safe (block)."""
+def risk_gate(doc, rc, a, name, trade, now, reviewer=None):
+    """Ask the risk manager about a trade a bot wants to open, and log the decision. Fails safe (block).
+    reviewer(payload) -> (approved, reason); the live default is the AI (ai.risk_review)."""
     import ai
     today = now.astimezone(MEL).date()
     realised = sum(t.get("pnl", 0.0) for t in a["trades"]
@@ -478,7 +492,7 @@ def risk_gate(doc, rc, a, name, trade, now):
                                    "pnl": round((x["mark"] - x["entry"]) * x["shares"], 2)} for x in a["positions"]],
                "today": {"realised_pnl": round(realised, 2),
                          "unrealised_pnl": round(sum((x["mark"] - x["entry"]) * x["shares"] for x in a["positions"]), 2)}}
-    ok, why = ai.risk_review(payload)
+    ok, why = (reviewer or ai.risk_review)(payload)
     log = doc.setdefault("risk_log", [])
     log.append({"time": now.isoformat(), "bot": name, "ticker": trade["ticker"], "cost": trade["cost"], "decision": "approve" if ok else "block", "reason": why})
     doc["risk_log"] = log[-50:]

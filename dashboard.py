@@ -266,7 +266,7 @@ if not desktop:  # phone view: tabs
         del st.session_state["user"]
         st.rerun()
     st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
-    home, race_tab, sugg, port, insiders = st.tabs(["Home", "Race", "Suggestions", "Portfolio", "Insiders"])
+    home, race_tab, bt_tab, sugg, port, insiders = st.tabs(["Home", "Race", "Backtest", "Suggestions", "Portfolio", "Insiders"])
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
@@ -653,6 +653,120 @@ with race_tab:
         render_race_tab()
     except Exception as e:
         st.markdown(race_error_card(e), unsafe_allow_html=True)
+
+# ---------- Backtest ----------
+BT_RACES = {"Instant (1% fee)": "crypto_instant", "Markets (0.1% fee)": "crypto_markets"}
+
+
+def pct_cell(x):
+    return "" if x is None else f"{round(x, 1) or 0.0:+.1f}%"  # no "-0.0%"
+
+
+def money_cell(x):
+    return "" if x is None else f"${x:,.2f}"
+
+
+def bt_table(racers, part):
+    rows = []
+    for n in race.RACERS:
+        r = (racers.get(n) or {}).get(part)
+        if not r:
+            continue
+        rows.append({"Racer": n, "Final value": f"${r['final_value']:,.0f}", "Return": pct_cell(r["return_pct"]),
+                     "vs Buy and Hold": "" if n == race.BENCH else pct_cell(r.get("vs_buy_and_hold_pct")), "Trades": r["trades"],
+                     "Win rate": "" if r["win_rate_pct"] is None else f"{r['win_rate_pct']:.0f}%", "Avg win": money_cell(r["avg_win"]),
+                     "Avg loss": money_cell(r["avg_loss"]), "Max drawdown": f"-{r['max_drawdown_pct']:.1f}%", "Fees": f"${r['fees']:,.2f}",
+                     "Flag": (racers[n].get("flag") or "") if part == "test" else ""})
+    return pd.DataFrame(rows)
+
+
+def render_backtest_tab():
+    bt = load_system("backtest_results", None)
+    if not bt or not bt.get("races"):
+        st.markdown('<div class="card sub">No backtest yet. It runs every Sunday night, or start it from GitHub Actions (backtest workflow).</div>',
+                    unsafe_allow_html=True)
+        return
+    run = datetime.fromisoformat(bt["run"]).astimezone(MEL)
+    pick = st.radio("Backtest race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="bt_pick")
+    key = "stocks"
+    if pick == "CRYPTO":
+        fee_pick = st.radio("CoinSpot fee", list(BT_RACES), horizontal=True, key="bt_fee")
+        key = BT_RACES[fee_pick]
+    res = bt["races"].get(key)
+    st.markdown(f'<div class="sub" style="margin-bottom:6px">Run {run.strftime("%a %d %b %Y, %H:%M")} · real yfinance prices · '
+                f'same rules and fees as the live race · paper money only</div>', unsafe_allow_html=True)
+    if not res:
+        st.markdown('<div class="card sub">No results for this race in the latest backtest.</div>', unsafe_allow_html=True)
+        return
+    per = res["period"]
+    d = lambda s: datetime.fromisoformat(s).astimezone(MEL).strftime("%d %b %Y")
+    st.markdown(f'<div class="card">' + line("Practice (first 70%)", f'{d(per["start"])} to {d(per["split"])}')
+                + line("Test (last 30%, unseen)", f'{d(per["split"])} to {d(per["end"])}') + '</div>', unsafe_allow_html=True)
+    part = st.radio("Period", ["test", "practice"], horizontal=True, key="bt_part",
+                    format_func={"test": "Test period", "practice": "Practice period"}.get)
+    st.dataframe(bt_table(res["racers"], part), hide_index=True, width="stretch")
+    st.markdown('<div class="sub">"Probably luck (overfit)" means it won in practice but lost on the unseen test data.</div>', unsafe_allow_html=True)
+    ch = res.get("chart") or {}
+    if ch.get("t"):
+        xs = [pd.Timestamp(t).tz_convert(MEL) for t in ch["t"]]
+        fig = go.Figure()
+        for n in race.RACERS:
+            fig.add_trace(go.Scatter(x=xs, y=ch["series"].get(n), mode="lines", name=n,
+                                     line=dict(width=1.6, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid"),
+                                     hovertemplate="%{y:$,.0f}"))
+        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=11))
+        fig.update_layout(height=340, margin=dict(l=8, r=8, t=28, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                          font=dict(color="#A7ADB6", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          title=dict(text="Test period: account value", font=dict(size=12)),
+                          legend=dict(orientation="h", y=-0.18, font=dict(size=11)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    rm = res.get("risk_manager") or {}
+    st.markdown("#### Risk Manager")
+    verdict = "".join(line(f'{p_.title()} period', f'{rm[p_]["verdict"]}: bots {rm[p_]["avg_return_with_pct"]:+.1f}% with it, '
+                                                    f'{rm[p_]["avg_return_without_pct"]:+.1f}% without') for p_ in ("practice", "test") if rm.get(p_))
+    by_bot = ", ".join(f"{b} {k}" for b, k in sorted(rm.get("by_bot", {}).items(), key=lambda x: -x[1])) or "none"
+    st.markdown(f'<div class="card">' + line("Trades it would have blocked", f'{rm.get("blocked", 0)}') + line("By racer", by_bot) + verdict
+                + f'<div class="sub" style="margin-top:6px">{rm.get("note", "")}</div></div>', unsafe_allow_html=True)
+    cp = res.get("coach") or {}
+    st.markdown("#### Coach's Picks <span class=\"sub\">(rule-based estimate)</span>", unsafe_allow_html=True)
+    t_, p_ = cp.get("test"), cp.get("practice")
+    st.markdown(f'<div class="card">' + line("Weeks with picks", f'{cp.get("weeks_with_picks", 0)} of {cp.get("weeks", 0)} ({cp.get("picks", 0)} picks)')
+                + (line("Practice return", pct_cell(p_["return_pct"])) if p_ else "")
+                + (line("Test return", f'{pct_cell(t_["return_pct"])} ({pct_cell(t_.get("vs_buy_and_hold_pct"))} vs Buy and Hold)') if t_ else "")
+                + '<div class="sub" style="margin-top:6px">Rule-based estimate: the best-scoring signals each Monday after fees, 0 to 3 picks, '
+                  'cash saved when nothing qualifies. The real Coach uses AI, which may already know past prices, so it can&#39;t be replayed.</div></div>',
+                unsafe_allow_html=True)
+    sh = bt.get("shadow") or {}
+    st.markdown("#### Shadow bot")
+    if sh.get("error"):
+        st.markdown(f'<div class="card sub">{sh["error"]}</div>', unsafe_allow_html=True)
+    elif not sh.get("holdings"):
+        st.markdown('<div class="card sub">No holdings with a purchase date to replay. Your real holdings are never touched.</div>', unsafe_allow_html=True)
+    else:
+        rows = ""
+        for h in sh["holdings"]:
+            what = "held all the way" if not h["sold"] else f'sold {h["sold"]["date"]} at ${h["sold"]["price"]:,.2f}'
+            if h.get("bought_instead"):
+                b = h["bought_instead"]
+                what += f', bought {b["shares"]} {b["ticker"].replace(".AX", "")} {b["date"]}'
+            elif h["sold"]:
+                what += ", kept the cash"
+            rows += line(f'<b>{h["ticker"].replace(".AX", "")}</b> <span class="sub">{what}</span>', money(h["difference"]))
+        diff = sh["shadow_total"] - sh["hold_total"]
+        st.markdown(f'<div class="card">' + line("Shadow bot", f'${sh["shadow_total"]:,.0f}') + line("Just holding", f'${sh["hold_total"]:,.0f}')
+                    + line("Difference", money(diff)) + '</div>' + f'<div class="card">{rows}</div>'
+                    + (f'<div class="sub">Skipped (no purchase date or no price data): {", ".join(sh["skipped"])}</div>' if sh.get("skipped") else ""),
+                    unsafe_allow_html=True)
+    st.markdown("#### Summary")
+    st.markdown('<div class="card">' + "".join(f'<div style="margin:4px 0">{s}</div>' for s in bt.get("summary", [])) + '</div>', unsafe_allow_html=True)
+
+
+with bt_tab:
+    try:
+        render_backtest_tab()
+    except Exception as e:
+        print("Backtest section failed:", repr(e))
+        st.markdown('<div class="card sub">The backtest results couldn&#39;t load right now.</div>', unsafe_allow_html=True)
 
 # ---------- Suggestions ----------
 def claude_prompt(s, when):

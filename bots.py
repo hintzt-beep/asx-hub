@@ -20,9 +20,20 @@ def atr(df, n=14):
 
 
 def daily_view(mkt, t, need=60):
+    cache = getattr(mkt, "views", None)
+    if cache is not None and t in cache:
+        v = cache[t]
+    else:
+        v = _daily_view(mkt, t)
+        if cache is not None:
+            cache[t] = v
+    return v if v is not None and len(v["df"]) >= need else None
+
+
+def _daily_view(mkt, t):
     df = mkt.daily(t)
     px = mkt.price(t)
-    if df is None or len(df) < need or not px:
+    if df is None or len(df) < 20 or not px:
         return None
     c, v = df["Close"], df["Volume"]
     s20, s50 = c.rolling(20).mean(), c.rolling(50).mean()
@@ -98,7 +109,10 @@ class Tyler(Bot):
         df = mkt.intraday(t)
         if df is None or len(df) < 12:
             return False
-        day = df[df.index.date == df.index[-1].date()]
+        if (df.index[-1] - df.index[-2]).total_seconds() >= 20 * 3600:
+            day = df.tail(21)  # daily bars (backtests): "today's high" becomes the recent 20-day high
+        else:
+            day = df[df.index.date == df.index[-1].date()]
         if len(day) < 12:
             return None
         last, prior = day.iloc[-1], day.iloc[:-1]

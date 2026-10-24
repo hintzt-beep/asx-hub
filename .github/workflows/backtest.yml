@@ -1,0 +1,29 @@
+name: backtest
+on:
+  schedule:
+    - cron: "0 10 * * 0"     # Sunday night: 9pm Melbourne in daylight saving (AEDT), 8pm in standard time (AEST)
+  workflow_dispatch:
+    inputs:
+      stock_days:
+        description: "Days of stock history (default 3 years)"
+        default: "1095"
+      crypto_days:
+        description: "Days of hourly crypto history (yfinance keeps about 2 years)"
+        default: "730"
+concurrency:
+  group: backtest           # its own lock: it only reads past prices and writes system/backtest_results
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install yfinance pandas anthropic
+      - run: python backtest.py --stock-days ${{ inputs.stock_days || '1095' }} --crypto-days ${{ inputs.crypto_days || '730' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}

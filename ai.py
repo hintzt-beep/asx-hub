@@ -67,3 +67,25 @@ def coach_json(system, payload, schema, max_tokens=16000):
         output_config={"effort": "high", "format": {"type": "json_schema", "schema": schema}},
         betas=["server-side-fallback-2026-07-01"], fallbacks="default")
     return _json_reply(r)
+
+
+# Rule-based stand-in for the risk manager, used by backtests (the AI may already know past prices).
+RULE_LIMITS = {"risk_pct": 2.0, "fee_pct": 2.0, "sector_pct": 40.0, "daily_loss_pct": 3.0}
+
+
+def risk_rules(payload):
+    """The risk manager's limits as plain rules, on the same payload the live risk gate builds. Returns (approved, reason)."""
+    t, acct = payload["trade"], payload["account"]
+    total = acct["value"] or 1.0
+    if t["loss_if_stopped_pct_of_account"] > RULE_LIMITS["risk_pct"]:
+        return False, f"A stop-out would lose {t['loss_if_stopped_pct_of_account']:.1f}% of the account (limit {RULE_LIMITS['risk_pct']:g}%)."
+    if t["fee_pct_of_trade"] > RULE_LIMITS["fee_pct"]:
+        return False, f"Fees are {t['fee_pct_of_trade']:.1f}% of the trade (limit {RULE_LIMITS['fee_pct']:g}%)."
+    if t["sector"] != "Crypto":  # every coin is one sector, so the sector limit only applies to shares
+        in_sector = sum(p["value"] for p in payload["open_positions"] if p["sector"] == t["sector"]) + t["cost"]
+        if in_sector / total * 100 > RULE_LIMITS["sector_pct"]:
+            return False, f"{t['sector']} would be {in_sector / total * 100:.0f}% of the account (limit {RULE_LIMITS['sector_pct']:g}%)."
+    today = payload["today"]["realised_pnl"] + payload["today"]["unrealised_pnl"]
+    if today < -RULE_LIMITS["daily_loss_pct"] / 100 * total:
+        return False, f"Down ${-today:,.2f} today, more than {RULE_LIMITS['daily_loss_pct']:g}% of the account."
+    return True, "Within the risk limits."

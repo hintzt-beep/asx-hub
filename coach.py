@@ -31,7 +31,9 @@ REPORT_SYSTEM = (
     "for example 'drawdown (the biggest fall from a high)'. Say what is working and what isn't, then suggest up to 3 small rule "
     "changes, each for one bot in one race, each with why. Only use numbers that appear in the data: never invent, estimate or "
     "round numbers into new ones. With fewer than 20 closed trades the evidence is thin, so say so. If there is too little data, "
-    "say that and suggest nothing.")
+    "say that and suggest nothing. You may also get the latest backtest (a replay of the same rules over past prices, split "
+    "into a practice period and an unseen test period): use it as extra evidence, trust the test period over practice, and "
+    "treat anything flagged 'probably luck (overfit)' with suspicion.")
 REPORT_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["summary", "working", "not_working", "suggestions"],
@@ -93,6 +95,22 @@ def racer_stats(doc):
 
 
 # ---------- Daily report ----------
+def backtest_brief():
+    """The latest backtest, cut down to what the Coach needs: test and practice returns, vs Buy and Hold, flags, summary."""
+    try:
+        bt = get("system", "backtest_results", None)
+    except Exception:
+        bt = None
+    if not bt:
+        return None
+    brief = {"run": bt.get("run"), "summary": bt.get("summary", []), "races": {}}
+    for key, res in bt.get("races", {}).items():
+        brief["races"][key] = {n: {"test_return_pct": r["test"]["return_pct"], "practice_return_pct": (r.get("practice") or {}).get("return_pct"),
+                                   "test_vs_buy_and_hold_pct": r["test"].get("vs_buy_and_hold_pct"), "test_trades": r["test"]["trades"],
+                                   "flag": r.get("flag")} for n, r in res.get("racers", {}).items() if r.get("test")}
+    return brief
+
+
 def run_report(now):
     stats = {}
     for key, rc in race.RACES.items():
@@ -104,7 +122,7 @@ def run_report(now):
         return None
     report = {"id": uuid.uuid4().hex[:8], "time": now.isoformat(), "stats": stats}
     try:
-        data = ai.coach_json(REPORT_SYSTEM, {"races": stats, "rules": RULES}, REPORT_SCHEMA)
+        data = ai.coach_json(REPORT_SYSTEM, {"races": stats, "rules": RULES, "backtest": backtest_brief()}, REPORT_SCHEMA)
     except Exception as e:
         report.update(summary=f"The Coach couldn't reach the AI today ({type(e).__name__}), so there is no written report. Today's stats are saved.",
                       working=[], not_working=[], suggestions=[], ai_error=str(e)[:300])
@@ -163,6 +181,30 @@ def check_pick(rc, p, cand, cash_left, acct_value):
         return None, "less than one share"
     return {"ticker": p["ticker"], "dollars": round(dollars, 2), "stop": stop, "price": px, "fee": round(f, 2), "units": units,
             "reason": p["reason"].strip()}, None
+
+
+def rule_picks(rc, cand, a):
+    """Rule-based estimate of Coach's Picks (used by backtests, since the AI may already know past prices):
+    the best-scoring signals that week, 0 to 3 picks, each passing the same checks as the live Coach; cash saved otherwise."""
+    def score(c):
+        return (int(c["price"] > c["sma50"]) + int(bool(c["sma200"]) and c["sma50"] > c["sma200"]) + int(45 <= c["rsi14"] <= 65)
+                + int(c["return_20d_pct"] > 0) + int((c["volume_5d_vs_20d"] or 0) > 1))
+    ranked = sorted(((score(c), c["return_20d_pct"], t) for t, c in cand.items()), reverse=True)
+    picks, cash_left, value = [], a["cash"], race.value(a)
+    for sc, _, t in ranked:
+        if sc < 4 or len(picks) == 3:
+            break
+        c = cand[t]
+        dollars = min(cash_left / (3 - len(picks)) / (1 + (race.COINSPOT_FEE if rc["crypto"] else 0)), race.MAX_POS * value)
+        if not rc["crypto"]:
+            dollars -= race.fee(rc, dollars) or 0
+        p = {"ticker": t, "dollars": round(dollars, 2), "stop": round(c["price"] - 2 * c["atr14"], 6),
+             "reason": f"Rule-based estimate: score {sc}/5 (trend, RSI {c['rsi14']:.0f}, momentum and volume)."}
+        order, _ = check_pick(rc, p, cand, cash_left, value)
+        if order:
+            picks.append(order)
+            cash_left -= order["dollars"] + order["fee"]
+    return picks
 
 
 def pick_line(rc, o):
