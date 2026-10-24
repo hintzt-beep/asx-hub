@@ -278,15 +278,19 @@ def n_trades(a):
     return sum(1 for t in a["trades"] if t["side"] in ("BUY", "SELL"))
 
 
-def lb_row(i, n, a, champ):
-    """Leaderboard row: time-weighted % first, then value, money put in, fees and trades."""
+def lb_row(i, n, a, champ, compact=False):
+    """Leaderboard row: time-weighted % first, then value, money put in, fees and trades (one line when compact)."""
     r = race.twr(a)
+    pct = f'<span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span>'
+    if compact:
+        return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
+                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
     return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-            f'<span class="lb-right"><span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span><br>'
+            f'<span class="lb-right">{pct}<br>'
             f'<span class="sub">${race.value(a):,.0f} from ${a["contributed"]:,.0f} · fees ${a["fees_paid"]:,.2f} · {n_trades(a)} trades</span></span></div>')
 
 
-def risk_log_html(rdoc, n=10):
+def risk_log_html(rdoc, n=10, wrap=True):
     """The last n risk-manager decisions, newest first."""
     rows = ""
     for e in reversed(rdoc.get("risk_log", [])[-n:]):
@@ -295,7 +299,14 @@ def risk_log_html(rdoc, n=10):
         rows += (f'<div class="mini"><span><span class="word" style="background:{c}22; color:{c}; border:1px solid {c}66;">'
                  f'{"APPROVED" if ok else "BLOCKED"}</span> <b>{e["bot"]}</b> {e["ticker"]} ${e["cost"]:,.2f}'
                  f'<br><span class="sub">{e["reason"]}</span></span><span class="sub">{datetime.fromisoformat(e["time"]).astimezone(MEL).strftime("%a %H:%M")}</span></div>')
-    return f'<div class="card">{rows}</div>' if rows else ""
+    return (f'<div class="card">{rows}</div>' if wrap else rows) if rows else ""
+
+
+def load_system(name, default):
+    try:
+        return get("system", name, None) or default
+    except Exception:
+        return default
 
 
 def hof_view(e):
@@ -366,7 +377,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 .pn-h {display: flex; justify-content: space-between; gap: 8px; color: #A7ADB6; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;}
 .h-mid {height: var(--mid);} .h-bot {height: var(--bot);}
 .h-lb {height: calc(var(--mid) - 35vh - 0.45rem);}
-.h-home {height: calc(var(--mid) * 0.5 - 0.25rem);} .h-hof {height: calc(var(--mid) * 0.5 - 2.5rem);}
+.h-home {height: calc(var(--mid) * 0.4 - 0.25rem);} .h-risk {height: calc(var(--mid) * 0.32 - 0.7rem);} .h-hof {height: calc(var(--mid) * 0.28 - 2.4rem);}
 .tb {display: flex; align-items: center; gap: 0.7rem; white-space: nowrap; overflow: hidden;}
 .tb svg {width: 30px; height: 30px; flex: none;}
 .tb .brand {font-size: 0.95rem;}
@@ -413,9 +424,8 @@ def render_desktop():
     total = sum(pots.values())
     mchips = "".join(f'<span class="mchip"><span class="dot" style="background:{GREEN if o else GREY}"></span>{n} {"open" if o else "opens " + fmt_left(left)}</span>'
                      for n, o, left in mkts) + f'<span class="mchip"><span class="dot" style="background:{GREEN}"></span>Crypto open</span>'
-    c_brand, c_total, c_race, c_view, c_out = st.columns([6.2, 1.3, 1.7, 1.25, 0.8], vertical_alignment="center")
+    c_brand, c_race, c_view, c_out = st.columns([7.2, 1.7, 1.25, 0.8], vertical_alignment="center")
     c_brand.markdown(f'<div class="tb">{BEAR_SVG}<span class="brand">{APP_NAME}</span><span class="sub">{now.strftime("%a %d %b, %H:%M")}</span>{mchips}</div>', unsafe_allow_html=True)
-    c_total.markdown(f'<div class="sub" style="line-height:1">Total</div><div class="tb-total">${total:,.0f}</div>', unsafe_allow_html=True)
     pick_race = c_race.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
     c_view.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
     if c_out.button("Log out"):
@@ -427,6 +437,7 @@ def render_desktop():
     if rc["key"] in race.ENABLED:
         try:
             rdoc = get("system", rc["doc"], None)
+            rdoc = rdoc if rdoc and rdoc.get("version") == race.VERSION else None  # old-format race: wait for the next bot run
         except Exception:
             rdoc = None
     left, centre, right = st.columns([1.05, 1.6, 1.55])
@@ -442,6 +453,8 @@ def render_desktop():
     hof_html = "".join(mini(f'{hof_view(e)[0]}<br><span class="sub">{datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}</span>',
                             f'{swatch(e["winner"])}<b>{e["winner"]}</b> {hof_view(e)[1]:+.1f}%') for e in reversed(hof))
     ends = f' Scorecard {rdoc["scorecard"]} lands {race.scorecard_end(rdoc).astimezone(MEL).strftime("%a %d %b")}.' if rdoc else ""
+    left.markdown(pn("Risk manager", (risk_log_html(rdoc, wrap=False) if rdoc else "") or '<div class="sub">No decisions yet.</div>', "h-risk", "last 10"),
+                  unsafe_allow_html=True)
     left.markdown(pn("Hall of Fame", hof_html or f'<div class="sub">No scorecards yet.{ends}</div>', "h-hof", rc["name"]), unsafe_allow_html=True)
     try:
         rset = get("system", "race_settings", None) or {}
@@ -464,7 +477,7 @@ def render_desktop():
         right.markdown(pn("Racers", '<div class="sub">No racers yet.</div>', "h-mid"), unsafe_allow_html=True)
     else:
         table, champ = race.standings(rdoc), rdoc.get("champion")
-        rows = "".join(lb_row(i, n, rdoc["accounts"][n], champ) for i, (n, _) in enumerate(table, 1))
+        rows = "".join(lb_row(i, n, rdoc["accounts"][n], champ, compact=True) for i, (n, _) in enumerate(table, 1))
         centre.markdown(pn(f'{rc["name"]} leaderboard', rows, "h-lb", f'ranked by time-weighted return · scorecard in {race.days_left(rdoc, now_utc)} days'), unsafe_allow_html=True)
         hist = rdoc.get("history", [])
         xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
@@ -481,7 +494,21 @@ def render_desktop():
                           "mood · value · last trade"), unsafe_allow_html=True)
 
     # bottom strip: Portfolio and Insiders
-    bot_l, bot_r = st.columns(2)
+    bot_s, bot_l, bot_r = st.columns(3)
+    reports, picks = load_system("coach_reports", []), load_system("coach_picks", [])
+    if reports:
+        rp = reports[-1]
+        s_html = (f'<div style="font-size:0.8rem">{rp["summary"]}</div>'
+                  + "".join(mini(f'{swatch(s["bot"])}<b>{s["bot"]}</b> <span class="sub">{s["race"]}: {s["change"]}</span>',
+                                 f'<span class="sub">{s.get("status", "new")}</span>') for s in rp.get("suggestions", [])))
+    else:
+        s_html = '<div class="sub">No Coach reports yet.</div>'
+    if picks:
+        for key, res in picks[-1].get("races", {}).items():
+            rcx = race.ALL_RACES[key]
+            s_html += "".join(mini(f'{pill("BUY")} <b>{o["ticker"]}</b> <span class="sub">Coach\'s pick, stop ${o["stop"]:,.2f}</span>', f'${o["dollars"]:,.0f}')
+                              for o in res.get("picks", [])) or mini(f'<span class="sub">{rcx["name"]}: no Coach\'s Picks this week</span>', "")
+    bot_s.markdown(pn("Suggestions", s_html, "h-bot", "approve on the phone view"), unsafe_allow_html=True)
     bought = "".join(mini(f'<b>{r["ticker"]}</b> <span class="sub">paid ${fp(float(r["entry"]))}, now ${fp(float(r["now"]))}</span>', money(r["gl"]))
                      for _, r in pnl.iterrows()) or '<div class="sub">Nothing bought today.</div>'
     sh_sales, sh_buys = (shadow_log or {}).get("sales", []), (shadow_log or {}).get("buys", [])
@@ -520,6 +547,7 @@ with race_tab:
     else:
         try:
             rdoc = get("system", rc["doc"], None)
+            rdoc = rdoc if rdoc and rdoc.get("version") == race.VERSION else None  # old-format race: wait for the next bot run
         except Exception:
             rdoc = None
         if not rdoc:
@@ -611,13 +639,6 @@ with home:
             st.rerun()
 
 # ---------- Suggestions ----------
-def load_system(name, default):
-    try:
-        return get("system", name, None) or default
-    except Exception:
-        return default
-
-
 def claude_prompt(s, when):
     return (f"In the Iron Paw repo (hintzt-beep/asx-hub), change {s['bot']}'s rules in the {s['race'].upper()} race "
             f"(the bots are in bots.py, the shared rules in race.py): {s['change']}\n"
