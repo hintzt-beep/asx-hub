@@ -12,7 +12,8 @@
 - Shadow bot (paper only): every alerter run it reads Ty's real holdings (qty, paid, bought) and never writes them. Rules in `shadow.py`: SELL when the trend is SELL and the gain after the $10 sell brokerage is over 2%, or when the loss is worse than 8% whatever the trend; otherwise HOLD with a plain reason (notes >12 months held: Australian tax discount). On a SELL it logs a paper sale at the current price (`system`/`shadow_log`: ticker, price, date, reason, costs; each holding sold at most once), then paper-buys the highest-scoring BUY on the Long term list with the proceeds (less $10 brokerage and 0.1% slippage). If no BUY idea exists the proceeds wait and are invested when one appears. Every shadow move pushes to Ty's topic.
 - Portfolio: holding cards show paid, now, gain/loss in $ and %, BUY/HOLD/SELL and the reason; add form takes what you paid and the buy date; new Shadow bot section (paper sales and buys, how each is doing since, total paper P/L, total brokerage).
 
-- Home "Needs you" now lists the latest 6 paper-bot and shadow-bot actions (buys, sells, stops, targets, end-of-day closes) with their plain-English reason and Melbourne time, newest first, or "All quiet." The trend-only SELL alerts for holdings and logged trades are gone from Home (holding cards on Portfolio still show their own view).
+- Home "Latest bot moves" (was "Needs you") lists the latest 6 paper-bot and shadow-bot actions (buys, sells, stops, targets, end-of-day closes) with their plain-English reason and Melbourne time, newest first, or "All quiet." The trend-only SELL alerts for holdings and logged trades are gone from Home (holding cards on Portfolio still show their own view).
+- One login: a single Admin user (password from `TY_PASSWORD`). Nathan's login is removed. Admin's data still lives under the `Ty` owner key in Supabase so nothing needed migrating; Nathan's saved data is left in Supabase untouched.
 
 ## Current task
 None.

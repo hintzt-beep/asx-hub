@@ -12,8 +12,8 @@ from shadow import decide, holding_key
 
 st.set_page_config(page_title="Hub", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 
-USERS = {"Ty": os.environ.get("TY_PASSWORD", "change-me-ty"),
-         "Nathan": os.environ.get("NATHAN_PASSWORD", "change-me-nathan")}
+ADMIN_PASSWORD = os.environ.get("TY_PASSWORD", "change-me-ty")
+OWNER = "Ty"  # Supabase owner key for Admin's saved data (kept so existing data still loads)
 
 GREEN, RED, AMBER, GREY = "#22C55E", "#EF4444", "#F59E0B", "#8A94A6"
 WORD_COLOR = {"BUY": GREEN, "SELL": RED, "HOLD": AMBER}
@@ -70,11 +70,10 @@ h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif 
 # ---------- Login ----------
 if "user" not in st.session_state:
     st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Your money, made simple.</div></div>{BEAR_SVG}</div></div>', unsafe_allow_html=True)
-    who = st.radio("Who are you?", list(USERS), horizontal=True)
     pw = st.text_input("Password", type="password")
     if st.button("Log in", type="primary"):
-        if pw == USERS[who]:
-            st.session_state.user = who
+        if pw == ADMIN_PASSWORD:
+            st.session_state.user = "Admin"
             st.rerun()
         else:
             st.error("Wrong password.")
@@ -96,10 +95,10 @@ POT_NAME = {"day": "Day trading", "long": "Long term", "crypto": "Crypto"}
 
 # ---------- Saved data (Supabase) ----------
 def load_json(name, default):
-    return get(USER, name, default)
+    return get(OWNER, name, default)
 
 def save_json(name, data):
-    put(USER, name, data)
+    put(OWNER, name, data)
 
 pots = load_json("pots", {"day": 0.0, "long": 0.0, "crypto": 0.0})
 holdings = load_json("holdings", [])
@@ -376,7 +375,7 @@ with home:
     st.markdown(f'<div class="hero"><div class="row"><div><div class="brand">{APP_NAME}</div><div class="sub">Hi {USER}</div></div>{BEAR_SVG}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
-    st.markdown("#### Needs you")
+    st.markdown("#### Latest bot moves")
     moves = bot_moves()
     for when, w, tk, why in moves:
         card(tk, w, f'<div class="sub" style="margin-top:6px">{why}</div><div class="sub" style="margin-top:4px">{when.strftime("%a %d %b, %H:%M")}</div>')
@@ -474,7 +473,7 @@ with port:
 
     # ---------- Shadow bot ----------
     st.markdown("#### Shadow bot")
-    st.markdown('<div class="sub">Pretend money only. It shadows Ty\'s holdings, never touches the real ones and never places orders.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub">Pretend money only. It shadows your holdings, never touches the real ones and never places orders.</div>', unsafe_allow_html=True)
     sh_sales, sh_buys = (shadow_log or {}).get("sales", []), (shadow_log or {}).get("buys", [])
     if not sh_sales and not sh_buys:
         st.markdown('<div class="card sub">No shadow moves yet. It sells when a holding turns down with a gain over 2%, or loses more than 8%.</div>', unsafe_allow_html=True)
