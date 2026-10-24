@@ -65,13 +65,21 @@ div[data-baseweb="tab-border"] {background-color: #3A3F47;}
 div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #3A3F47;}
 [data-testid="stExpander"] details {border: 1px solid #3A3F47; border-radius: 12px;}
 h4 {margin: 14px 0 6px;}
-.lb-row {display: grid; grid-template-columns: 26px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 6px; border-bottom: 1px solid #3A3F47;}
+.lb-row {display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 9px 8px; border-bottom: 1px solid #3A3F47;}
 .lb-row:last-child {border-bottom: none;}
 .lb-row.lead {background: #C1121F1F; border-radius: 10px;}
 .lb-rank, .lb-val {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-.lb-val {font-weight: 800;}
+.lb-val {font-weight: 800; font-size: 1.05rem;}
+.lb-right {text-align: right; line-height: 1.25;}
+.swatch {display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: middle;}
+.kpis {display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px;}
+.kpi {background: #111216; border: 1px solid #3A3F47; border-radius: 14px; padding: 12px 14px;}
+.kpi .label {margin: 0 0 4px;}
+.num {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.45rem; font-weight: 800; line-height: 1.15;}
+.bigv {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 800; margin-top: 8px;}
+[data-testid="stPlotlyChart"] {background: #111216; border: 1px solid #3A3F47; border-radius: 18px; padding: 10px 8px 4px; margin-bottom: 12px;}
 .champ {font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; color: #F5C542; background: #F5C5421F; border: 1px solid #F5C54266; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;}
-.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 12px;}
+.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; margin-bottom: 12px;}
 .grid .card {margin: 0;}
 .label {color: #A7ADB6; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
 .trade {border-top: 1px solid #3A3F47; padding-top: 6px; margin-top: 6px;}
@@ -295,6 +303,11 @@ race_tab, home, port, celebs = st.tabs(["Race", "Home", "Portfolio", "Celebs"])
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
+RACER_COLOR = {"Tyler": "#FF8A3D", "Ryan": "#F5C542", "Nathan": "#4FD1C5", "Newton": "#7AA2FF", "Morpheus": "#C084FC", "Buy and Hold": "#A7ADB6"}
+
+
+def swatch(n):
+    return f'<span class="swatch" style="background:{RACER_COLOR.get(n, GREY)}"></span>'
 
 
 def mood(a, now_utc):
@@ -329,9 +342,10 @@ def bot_card(n, a, champ, now_utc):
     di = a.get("diary") or {}
     diary = (f'<div class="diary">{di["text"]}</div>' if di.get("day") == now_utc.astimezone(MEL).date().isoformat()
              else '<div class="sub">No diary entry yet today.</div>')
-    return (f'<div class="card"><div class="row"><b style="font-size:1.1rem">{n}{champ_badge(n, champ)}</b>{mood_pill(mood(a, now_utc))}</div>'
-            f'<div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
-            + line("Account value", f"${v:,.0f} {money(v - race.START_CASH)}") + line("Open positions", str(len(a["positions"])))
+    return (f'<div class="card" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b style="font-size:1.1rem">{swatch(n)}{n}{champ_badge(n, champ)}</b>'
+            f'{mood_pill(mood(a, now_utc))}</div><div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
+            f'<div class="bigv">${v:,.0f}</div><div>{money(v - race.START_CASH)} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}% this season)</span></div>'
+            + line("Open positions", str(len(a["positions"])))
             + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
             + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
 
@@ -355,17 +369,32 @@ with race_tab:
         champ = rdoc.get("champion")
         st.markdown(f'<div class="sub" style="margin-bottom:6px">Season {rdoc["season"]} · {race.days_left(rdoc, now_utc)} days left · '
                     f'paper money only, no real orders</div>', unsafe_allow_html=True)
-        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{n}{champ_badge(n, champ)}</span>'
-                       f'<span class="lb-val">${v:,.0f}</span><span>{money(v - race.START_CASH)} <span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>'
-                       for i, (n, v) in enumerate(table, 1))
+        accts = rdoc["accounts"]
+        lead_n, lead_v = table[0]
+        bench_v = race.value(accts[race.BENCH])
+        n_trades = sum(1 for n in race.BOTS for t in accts[n]["trades"] if t["side"] in ("BUY", "SELL"))
+        beat = sum(1 for n in race.BOTS if race.value(accts[n]) > bench_v)
+        kpis = [("Leader", f"{swatch(lead_n)}{lead_n}", f"{(lead_v / race.START_CASH - 1) * 100:+.1f}%"),
+                ("Days left", str(race.days_left(rdoc, now_utc)), f"of {race.SEASON_DAYS}, season {rdoc['season']}"),
+                ("Bot trades", str(n_trades), "this season"),
+                ("Beating Buy and Hold", f"{beat} of {len(race.BOTS)}", f"benchmark {(bench_v / race.START_CASH - 1) * 100:+.1f}%")]
+        st.markdown('<div class="kpis">' + "".join(f'<div class="kpi"><div class="label">{k}</div><div class="num">{v}</div><div class="sub">{s}</div></div>'
+                                                   for k, v, s in kpis) + '</div>', unsafe_allow_html=True)
+        rows = "".join(f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
+                       f'<span class="lb-right"><span class="lb-val">${v:,.0f}</span><br>{money(v - race.START_CASH)} '
+                       f'<span class="sub">({(v / race.START_CASH - 1) * 100:+.1f}%)</span></span></div>' for i, (n, v) in enumerate(table, 1))
         st.markdown(f'<div class="card">{rows}</div>', unsafe_allow_html=True)
         hist = rdoc.get("history", [])
         xs = [pd.Timestamp(h["t"]).tz_convert(MEL) for h in hist]
         fig = go.Figure()
         for n, _ in table:
-            fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n))
-        fig.update_layout(height=320, margin=dict(l=8, r=8, t=8, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                          legend=dict(orientation="h", y=-0.15), yaxis=dict(tickprefix="$"))
+            fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n,
+                                     line=dict(width=1.6, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid"),
+                                     hovertemplate="%{y:$,.0f}"))
+        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=11))
+        fig.update_layout(height=340, margin=dict(l=8, r=8, t=8, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                          font=dict(color="#A7ADB6", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          legend=dict(orientation="h", y=-0.18, font=dict(size=11)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         st.markdown('<div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
     st.markdown("#### Hall of Fame")
