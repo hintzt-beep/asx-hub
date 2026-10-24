@@ -1,0 +1,43 @@
+name: gmail
+# Personal Gmail agent. Increment 1 is read-only and manual: Actions > gmail > Run workflow.
+# This repo is public, so these logs are public: the agent prints counts only, never senders,
+# subjects or bodies. Turn the agent off by setting the repo variable GMAIL_AGENT_ENABLED to 0.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["gmail_agent/**", "tests/**", ".github/workflows/gmail.yml"]
+  push:
+    branches: [main]
+    paths: ["gmail_agent/**", "tests/**", ".github/workflows/gmail.yml"]
+concurrency:
+  group: gmail             # its own lock: never shares or blocks the trading runs
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r gmail_agent/requirements.txt
+      - run: python -m unittest discover -s tests -t . -v
+  scan:
+    needs: test
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r gmail_agent/requirements.txt
+      - run: python -m gmail_agent.cli scan
+        env:
+          GMAIL_AGENT_ENABLED: ${{ vars.GMAIL_AGENT_ENABLED || '1' }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
