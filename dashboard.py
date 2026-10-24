@@ -263,7 +263,7 @@ if not desktop:  # phone view: tabs
         del st.session_state["user"]
         st.rerun()
     st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
-    home, race_tab, port, insiders = st.tabs(["Home", "Race", "Portfolio", "Insiders"])
+    home, race_tab, sugg, port, insiders = st.tabs(["Home", "Race", "Suggestions", "Portfolio", "Insiders"])
 
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
@@ -575,6 +575,10 @@ with home:
             pots[which] = max(pots[which] - amt, 0.0)
             save_json("pots", pots)
             st.rerun()
+
+# ---------- Suggestions ----------
+with sugg:
+    st.markdown('<div class="card sub">No Coach reports yet. The Coach will post a daily report and rule-change ideas here.</div>', unsafe_allow_html=True)
 
 # ---------- Portfolio ----------
 with port:
