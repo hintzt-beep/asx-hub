@@ -38,7 +38,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\nDone. Add these three GitHub secrets (Settings > Secrets and variables > Actions):\n")
     print(f"  GMAIL_CLIENT_ID      = {client.get('client_id', '(see client_secret.json)')}")
-    print("  GMAIL_CLIENT_SECRET  = (the client_secret value inside client_secret.json)")
+    print(f"  GMAIL_CLIENT_SECRET  = {client.get('client_secret', '(see client_secret.json)')}")
     print(f"  GMAIL_REFRESH_TOKEN  = {creds.refresh_token}")
     print("\nTreat the refresh token like a password: don't share it or save it in the repo.")
     return 0
