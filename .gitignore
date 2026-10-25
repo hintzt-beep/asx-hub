@@ -1,1 +1,10 @@
 __pycache__/
+
+# Gmail agent: OAuth files and secrets must never be committed (this repo is public)
+client_secret*.json
+credentials*.json
+token*.json
+.env
+.env.*
+*.sqlite
+*.db
