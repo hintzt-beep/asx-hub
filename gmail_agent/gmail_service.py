@@ -83,7 +83,7 @@ def build_client(settings: config.Settings) -> Any:
         client_id=settings.client_id,
         client_secret=settings.client_secret,
         token_uri=config.TOKEN_URI,
-        scopes=config.SCOPES_READONLY,
+        scopes=config.SCOPES,
     )
     # The access token is fetched (and refreshed when it expires) by the library.
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
@@ -106,7 +106,12 @@ class GmailService:
                 if _is_auth_failure(exc):
                     raise GmailAuthError(
                         "Gmail login failed. The refresh token may have expired or been revoked: "
-                        "run `python -m gmail_agent.authorize` again and update the secret."
+                        "run connect-gmail.bat again and update the GMAIL_REFRESH_TOKEN secret."
+                    ) from None
+                if _status(exc) == 403 and "insufficient" in str(exc).lower():
+                    raise GmailAuthError(
+                        "The Gmail login doesn't allow changes yet (read-only token). Run connect-gmail.bat "
+                        "again, allow access, and update the GMAIL_REFRESH_TOKEN secret."
                     ) from None
                 if _is_retryable(exc) and attempt < self._retries:
                     self._sleep(delay)
@@ -161,3 +166,25 @@ class GmailService:
 
     def recent(self, query: str, limit: int) -> list[MessageMeta]:
         return [self.get_meta(mid) for mid in self.list_message_ids(query, limit)]
+
+    # ---- Changes (only used when dry-run is off). Adding/removing labels only. ----
+
+    def list_labels(self) -> dict[str, str]:
+        """{label name: label id} for every label in the mailbox."""
+        data = self._run(self._client.users().labels().list(userId="me"))
+        return {lab["name"]: lab["id"] for lab in data.get("labels", [])}
+
+    def create_label(self, name: str) -> str:
+        body = {"name": name, "labelListVisibility": "labelShow", "messageListVisibility": "show"}
+        return self._run(self._client.users().labels().create(userId="me", body=body))["id"]
+
+    def modify_labels(self, message_ids: list[str], add: list[str] | None = None,
+                      remove: list[str] | None = None) -> None:
+        """Add/remove label ids on up to 1000 messages per call (Gmail's limit)."""
+        for i in range(0, len(message_ids), 1000):
+            body = {"ids": message_ids[i:i + 1000]}
+            if add:
+                body["addLabelIds"] = add
+            if remove:
+                body["removeLabelIds"] = remove
+            self._run(self._client.users().messages().batchModify(userId="me", body=body))

@@ -1,5 +1,5 @@
-"""Personal Gmail agent. Separate from the trading code: it never imports or changes it.
+"""Personal Gmail agent. Separate from the trading code: it never imports or changes it
+(it only reuses store.py to keep its own activity log in Supabase).
 
-Increment 1: read-only. It lists recent messages (headers and labels only, never bodies)
-and reports counts. Nothing in Gmail is changed.
+Reads headers and labels only (never bodies). Adds "Agent/" labels only when dry-run is off.
 """

@@ -110,11 +110,12 @@ class ConfigTests(unittest.TestCase):
             s = config.load()
         self.assertTrue(s.dry_run)
         self.assertFalse(s.has_credentials)
-        self.assertEqual(config.SCOPES_READONLY, ["https://www.googleapis.com/auth/gmail.readonly"])
+        self.assertEqual(config.SCOPES, ["https://www.googleapis.com/auth/gmail.modify"])
+        self.assertNotIn(config.FORBIDDEN_SCOPE, config.SCOPES)
 
     def test_authorize_asks_for_the_same_scope(self):
         from gmail_agent import authorize
-        self.assertEqual(authorize.SCOPES, config.SCOPES_READONLY)
+        self.assertEqual(authorize.SCOPES, config.SCOPES)
 
     def test_limits_are_clamped(self):
         with mock.patch.dict(os.environ, {"GMAIL_MAX_MESSAGES": "99999"}, clear=True):
@@ -132,13 +133,13 @@ except ImportError:
 
 @unittest.skipUnless(HAVE_GOOGLE, "Google libraries not installed (they are on GitHub Actions)")
 class RealClientTests(unittest.TestCase):
-    def test_real_client_builds_offline_with_read_only_scope(self):
+    def test_real_client_builds_offline_with_modify_scope(self):
         from gmail_agent.gmail_service import build_client
         s = config.Settings(enabled=True, dry_run=True, query="q", max_messages=1,
                             client_id="id", client_secret="secret", refresh_token="token")
         client = build_client(s)  # no network: Gmail's API description ships with the library
         self.assertTrue(hasattr(client.users().messages(), "list"))
-        self.assertEqual(client._http.credentials.scopes, config.SCOPES_READONLY)
+        self.assertEqual(client._http.credentials.scopes, config.SCOPES)
 
 
 class CliTests(unittest.TestCase):

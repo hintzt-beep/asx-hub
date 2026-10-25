@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import sys
 
-# Must match config.SCOPES_READONLY (a test checks this).
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+# Must match config.SCOPES (a test checks this). Modify = read + labels + Spam/Trash, never permanent delete.
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 
 def main(argv: list[str] | None = None) -> int:
