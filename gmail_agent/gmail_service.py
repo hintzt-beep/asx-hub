@@ -12,7 +12,7 @@ from typing import Any, Callable, Iterator
 
 from . import config
 
-HEADERS = ["From", "Subject", "Date", "List-Unsubscribe", "Authentication-Results"]
+HEADERS = ["From", "Reply-To", "Subject", "Date", "List-Unsubscribe", "Authentication-Results"]
 # Only these fields come back from Google: no snippet, no body.
 MESSAGE_FIELDS = "id,threadId,labelIds,internalDate,payload/headers"
 RETRY_STATUSES = {429, 500, 502, 503, 504}

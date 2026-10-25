@@ -11,6 +11,7 @@ import sys
 
 from . import config
 from .gmail_service import GmailError, GmailService, build_client
+from .report import run_dry_run
 from .scan import run_scan
 
 
@@ -23,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     scan = sub.add_parser("scan", help="read-only scan, prints counts")
     scan.add_argument("--samples", type=int, default=0, help="show sender/subject of N messages (your PC only)")
+    rep = sub.add_parser("report", help="dry run: sort emails and show what would happen (changes nothing)")
+    rep.add_argument("--samples", type=int, default=0, help="show each email's category (your PC only)")
     args = parser.parse_args(argv)
 
     settings = config.load()
@@ -37,11 +40,25 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         service = GmailService(build_client(settings))
-        report = run_scan(service, settings.query, settings.max_messages, keep_samples=samples)
+        if args.command == "report":
+            dry = run_dry_run(service, settings.query, settings.max_messages, keep_rows=samples)
+        else:
+            report = run_scan(service, settings.query, settings.max_messages, keep_samples=samples)
     except GmailError as exc:
         # Fail safely: report the problem, change nothing, exit non-zero so the run shows red.
         print(f"Gmail scan stopped safely: {exc}")
         return 1
+
+    if args.command == "report":
+        print(dry.counts_text())
+        for m, c, acts in dry.rows:
+            tags = [t for t, on in (("urgent", c.urgent), ("reply", c.needs_reply),
+                                    ("protected", c.protected)) if on]
+            spam = f" spam={c.spam_score}" if c.spam_score else ""
+            print(f"  {c.category[:22]:22} {','.join(tags):18}{spam:10} {m.sender[:40]:40} {m.subject[:60]}")
+            for a in acts:
+                print(f"      would {a.kind} {a.value}  ({a.reason})")
+        return 0
 
     print(report.counts_text())
     for m in report.samples:
