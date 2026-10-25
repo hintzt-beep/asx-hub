@@ -22,6 +22,8 @@ class _Request:
 
     def execute(self):
         self._client.calls.append(self._name)
+        if self._name in self._client.fail_calls:
+            raise FakeHttpError(500)
         if self._client.failures:
             raise self._client.failures.pop(0)
         return self._fn()
@@ -48,6 +50,17 @@ class _Messages:
         assert "snippet" not in fields and "body" not in fields, "content must never be requested"
         return _Request(self.c, "messages.get", lambda: next(m for m in self.c.data if m["id"] == id))
 
+    def batchModify(self, userId, body):
+        def run():
+            assert set(body) <= {"ids", "addLabelIds", "removeLabelIds"}, body
+            for m in self.c.data:
+                if m["id"] in body["ids"]:
+                    labs = [x for x in m["labelIds"] if x not in body.get("removeLabelIds", [])]
+                    labs += [x for x in body.get("addLabelIds", []) if x not in labs]
+                    m["labelIds"] = labs
+            return {}
+        return _Request(self.c, "messages.batchModify", run)
+
 
 class _Labels:
     def __init__(self, client: "FakeClient"):
@@ -56,6 +69,18 @@ class _Labels:
     def get(self, userId, id):
         total, unread = self.c.inbox
         return _Request(self.c, "labels.get", lambda: {"id": id, "messagesTotal": total, "messagesUnread": unread})
+
+    def list(self, userId):
+        return _Request(self.c, "labels.list",
+                        lambda: {"labels": [{"id": i, "name": n} for n, i in self.c.labels.items()]})
+
+    def create(self, userId, body):
+        def run():
+            assert body["name"] not in self.c.labels, "duplicate label created"
+            new_id = f"Label_{len(self.c.labels) + 1}"
+            self.c.labels[body["name"]] = new_id
+            return {"id": new_id, "name": body["name"]}
+        return _Request(self.c, "labels.create", run)
 
 
 class _Users:
@@ -79,6 +104,8 @@ class FakeClient:
         self.inbox = inbox
         self.calls: list[str] = []
         self.failures: list[Exception] = []  # raised in order before the next success
+        self.labels: dict[str, str] = {"INBOX": "INBOX", "UNREAD": "UNREAD", "Receipts": "Label_0"}
+        self.fail_calls: set[str] = set()  # API calls that always fail with HTTP 500
 
     def users(self):
         return _Users(self)

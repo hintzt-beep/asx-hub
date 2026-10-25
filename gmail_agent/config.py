@@ -4,10 +4,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-# Read-only: the agent can see labels and headers but cannot change anything.
-# Later increments will ask for gmail.modify (labels, Spam, Trash). Never mail.google.com
-# (the scope that allows permanent deletion).
-SCOPES_READONLY = ["https://www.googleapis.com/auth/gmail.readonly"]
+# gmail.modify: read, add/remove labels, move to Spam/Trash. It can NOT permanently delete
+# (that needs https://mail.google.com/, which this agent never asks for).
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+FORBIDDEN_SCOPE = "https://mail.google.com/"
 
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 

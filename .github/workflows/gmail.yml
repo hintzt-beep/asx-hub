@@ -1,15 +1,19 @@
 name: gmail
-# Personal Gmail agent. Increment 1 is read-only and manual: Actions > gmail > Run workflow.
+# Personal Gmail agent. Run by hand: Actions > gmail > Run workflow.
 # This repo is public, so these logs are public: the agent prints counts only, never senders,
 # subjects or bodies. Turn the agent off by setting the repo variable GMAIL_AGENT_ENABLED to 0.
 on:
   workflow_dispatch:
     inputs:
       command:
-        description: "report = dry-run sorting (changes nothing), scan = counts only"
+        description: "report = show sorting, apply = add Agent/ labels, undo = remove the last apply's labels, scan = counts"
         type: choice
-        options: [report, scan]
+        options: [report, apply, undo, scan]
         default: report
+      dry_run:
+        description: "Dry run (changes nothing). Untick to really apply or undo."
+        type: boolean
+        default: true
   pull_request:
     paths: ["gmail_agent/**", "tests/**", ".github/workflows/gmail.yml"]
   push:
@@ -44,7 +48,10 @@ jobs:
       - run: python -m gmail_agent.cli ${{ inputs.command || 'report' }}
         env:
           GMAIL_AGENT_ENABLED: ${{ vars.GMAIL_AGENT_ENABLED || '1' }}
+          GMAIL_DRY_RUN: ${{ inputs.dry_run == false && '0' || '1' }}
           GMAIL_WORK_DOMAINS: ${{ vars.GMAIL_WORK_DOMAINS }}
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
