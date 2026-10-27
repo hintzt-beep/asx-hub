@@ -102,13 +102,34 @@ def backtest_brief():
     except Exception:
         bt = None
     if not bt:
-        return None
+        lab = lab_brief()
+        return {"strategy_lab": lab} if lab else None
     brief = {"run": bt.get("run"), "summary": bt.get("summary", []), "races": {}}
     for key, res in bt.get("races", {}).items():
         brief["races"][key] = {n: {"test_return_pct": r["test"]["return_pct"], "practice_return_pct": (r.get("practice") or {}).get("return_pct"),
                                    "test_vs_buy_and_hold_pct": r["test"].get("vs_buy_and_hold_pct"), "test_trades": r["test"]["trades"],
                                    "flag": r.get("flag")} for n, r in res.get("racers", {}).items() if r.get("test")}
+    lab = lab_brief()
+    if lab:
+        brief["strategy_lab"] = lab
     return brief
+
+
+def lab_brief():
+    """The Strategy Lab's verdicts and best survivors, cut down for the Coach (it explains them; it does not pick)."""
+    try:
+        lab = get("system", "lab_results", None)
+    except Exception:
+        lab = None
+    if not lab:
+        return None
+    out = {"run": lab.get("run"), "summary": lab.get("summary", []), "markets": {}}
+    for key, m in lab.get("markets", {}).items():
+        for mode, r in (m.get("fees") or {}).items():
+            out["markets"][f"{key}_{mode}"] = {"verdict": r.get("verdict"), "counts": r.get("counts"), "buy_and_hold": r.get("buy_and_hold"),
+                                               "survivors": [{"plain": s["plain"], "test": s["test"], "practice_return_pct": s["practice"]["return_pct"]}
+                                                             for s in r.get("survivors", [])[:3]]}
+    return out
 
 
 def run_report(now):

@@ -11,6 +11,9 @@ try:
 except SystemExit:
     pass
 now = datetime.now(timezone.utc).isoformat()
+import json
+fake_store.put("system", "lab_results", json.load(open(os.path.join(os.path.dirname(__file__), "lab_sample.json"))))
+print("seeded lab_results")
 for key in ("race_stocks", "race_crypto"):
     doc = fake_store.get("system", key, None)
     if not doc:

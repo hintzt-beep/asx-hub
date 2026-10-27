@@ -29,6 +29,8 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     ph = b.new_page(viewport={"width": 390, "height": 2400}, device_scale_factor=2)
     safe("login", ph, lambda: (login(ph), shot(ph, "1_phone_home")))
+    safe("backtest", ph, lambda: (tab(ph, "Backtest"), shot(ph, "2b_phone_backtest")))
+    safe("labcard", ph, lambda: (ph.locator("details.more summary").nth(1).click(), ph.wait_for_timeout(800), shot(ph, "2c_phone_lab_open")))
     safe("race", ph, lambda: (tab(ph, "Race"), shot(ph, "2_phone_race")))
     safe("card", ph, lambda: (ph.locator("details.more summary").first.click(), ph.wait_for_timeout(800), shot(ph, "3_phone_card_open")))
     for t_ in ("Suggestions", "Portfolio", "Insiders"):
