@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from race import MEL, STRATEGIES, buy, p, sell
+from race import MEL, STRATEGIES, buy, fee, p, sell, value
 
 
 # ---------- Indicators from real daily bars (None when there is not enough data) ----------
@@ -226,10 +226,19 @@ class Tyler(Bot):
 class Ryan(Bot):
     name, style = "Ryan", "The Bargain Hunter: buys sharp drops when RSI is under 30, waits days for the bounce."
     wait_for_tick = False              # STOCKS: wait for the first up day instead of buying straight into the drop
+    STOCK_RSI = 25                     # STOCKS: stricter oversold level (crypto keeps 30)
+    STOCK_MAX_FEE = 0.01               # STOCKS: skip a buy if the CommSec fee would be over 1% of it (shared limit is 2%)
 
     def trade(self, rc, a, name, mkt, now, events):
         self.wait_for_tick = not rc.get("crypto")
         return super().trade(rc, a, name, mkt, now, events)
+
+    def may_buy_ticker(self, rc, a, t, now):
+        if rc.get("crypto"):
+            return True
+        size = min(0.20 * value(a), a["cash"])  # Ryan's usual position: 20% of the account
+        f = fee(rc, size) if size > 0 else None
+        return f is not None and f <= self.STOCK_MAX_FEE * size
 
     def signal(self, mkt, t, now):
         v = daily_view(mkt, t)
@@ -245,11 +254,11 @@ class Ryan(Bot):
                               f"Mean reversion (betting a big drop bounces back) says buy. Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
         prev = float(v["close"].iloc[-2])
         low_rsi = min(v["rsi"], rsi(v["close"].iloc[:-1]))  # oversold at yesterday's close or now
-        if low_rsi >= 30 or drop > -5 or v["px"] <= prev:
+        if low_rsi >= self.STOCK_RSI or drop > -5 or v["px"] <= prev:
             return None
         stop = v["px"] * 0.92
         return {"px": v["px"], "stop": stop, "frac": 0.20, "rank": -low_rsi,
-                "reason": f"Oversold (RSI {low_rsi:.0f}, under 30 means sold too hard): down {abs(drop):.1f}% in 5 days, and it has stopped falling "
+                "reason": f"Oversold (RSI {low_rsi:.0f}, under {self.STOCK_RSI} means sold very hard): down {abs(drop):.1f}% in 5 days, and it has stopped falling "
                           f"and ticked up (${p(v['px'])} vs ${p(prev)} last close). Mean reversion (betting a big drop bounces back) says buy now the bounce has started. "
                           f"Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
 

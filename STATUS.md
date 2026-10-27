@@ -53,6 +53,8 @@
 
 - Tyler, CRYPTO race (27 Oct evening, Coach suggestion approved): now the Strategy Lab's best survivor at CoinSpot Markets 0.1% (the live fee): 55-day-high close on 1.5x+ volume, BTC above its 200-day, stop 5%, sells after 40 days. Each daily breakout is bought at most once (`lab_bars` per account), so a stop-out never leads to re-buying the same signal. Tests: 1.4x no buy, 1.5x buys, stop 5%, 40-day exit (not at 30), same breakout not re-bought; `alerter.py --once` and `coach.py` clean on the fake setup.
 
+- Ryan, STOCKS race (27 Oct evening, Coach suggestion approved): oversold level tightened from RSI 30 to 25 (still needs a 5%+ drop in 5 days and an up-tick), and he skips a buy when the CommSec fee would be over 1% of his usual 20% position (shared limit stays 2%). With today's $400-a-week accounts that means Ryan saves up until his account is about $2,500. CRYPTO Ryan unchanged. Tests pass (deep oversold up-tick buys with the new reason; $1,200 account skipped on fee share; crypto unaffected); `alerter.py --once` and `coach.py` clean.
+
 ## Current task
 On hold (26 Oct, Ty's request). Gmail agent is safe to leave: nothing is scheduled, it only runs when started by hand from Actions > gmail. Note: Google app is in Testing mode, so the refresh token expires about 1 Nov; when resuming, re-run connect-gmail.bat and update GMAIL_REFRESH_TOKEN (or publish the app to Production first). Next when resumed: check the Agent/ labels, then schedule + daily summary, then spam moves (approval needed).
 
