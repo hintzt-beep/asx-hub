@@ -42,17 +42,17 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
 #MainMenu, footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
-.block-container {padding: 1.2rem 1rem 4rem;}
-@media (min-width: 768px) {.block-container {padding: 2rem 3rem 4rem;}}
-.card {background: #111216; border: 1px solid #3A3F47; border-radius: 18px; padding: 14px 16px; margin-bottom: 10px;}
-.hero {background: linear-gradient(135deg, #C1121F2E, #C1121F0F); border: 1px solid #C1121F99; box-shadow: 0 0 20px #C1121F4D; border-radius: 22px; padding: 18px; margin-bottom: 12px;}
+.block-container {padding: 0.8rem 0.8rem 3rem;}
+@media (min-width: 768px) {.block-container {padding: 1.4rem 2.5rem 3rem;}}
+.card {background: #111216; border: 1px solid #3A3F47; border-radius: 14px; padding: 10px 14px; margin-bottom: 8px;}
+.hero {background: linear-gradient(135deg, #C1121F2E, #C1121F0F); border: 1px solid #C1121F99; box-shadow: 0 0 20px #C1121F4D; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;}
 .big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #F2F4F7; text-shadow: 0 0 10px #C1121F80; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
 .brand {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif; font-weight: 900; font-size: 1.15rem; letter-spacing: 0.18em; color: #F2F4F7; text-shadow: 0 0 8px #C1121F99;}
 .sub {color: #A7ADB6; font-size: 0.8rem;}
 .row {display: flex; justify-content: space-between; align-items: center; gap: 8px;}
 .word {padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em;}
-.chips {display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px;}
-.chip {flex: 0 0 auto; background: #111216; border: 1px solid #3A3F47; border-radius: 999px; padding: 6px 12px; font-size: 0.75rem; white-space: nowrap;}
+.chips {display: flex; gap: 6px; overflow-x: auto; margin-bottom: 8px; padding-bottom: 2px;}
+.chip {flex: 0 0 auto; background: #111216; border: 1px solid #3A3F47; border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; white-space: nowrap;}
 .dot {display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;}
 .stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #3A3F47; box-shadow: 0 0 8px #C1121F33;}
 .stButton button:hover {border-color: #C1121F; box-shadow: 0 0 14px #C1121F80;}
@@ -63,7 +63,7 @@ div[data-baseweb="tab-highlight"] {background-color: #C1121F; box-shadow: 0 0 8p
 div[data-baseweb="tab-border"] {background-color: #3A3F47;}
 div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #3A3F47;}
 [data-testid="stExpander"] details {border: 1px solid #3A3F47; border-radius: 12px;}
-h4 {margin: 14px 0 6px;}
+h4 {margin: 10px 0 4px; font-size: 1rem;}
 .lb-row {display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 9px 8px; border-bottom: 1px solid #3A3F47;}
 .lb-row:last-child {border-bottom: none;}
 .lb-row.lead {background: #C1121F1F; border-radius: 10px;}
@@ -71,14 +71,14 @@ h4 {margin: 14px 0 6px;}
 .lb-val {font-weight: 800; font-size: 1.05rem;}
 .lb-right {text-align: right; line-height: 1.25;}
 .swatch {display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: middle;}
-.kpis {display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px;}
-.kpi {background: #111216; border: 1px solid #3A3F47; border-radius: 14px; padding: 12px 14px;}
+.kpis {display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 8px;}
+.kpi {background: #111216; border: 1px solid #3A3F47; border-radius: 12px; padding: 8px 12px;}
 .kpi .label {margin: 0 0 4px;}
-.num {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.45rem; font-weight: 800; line-height: 1.15;}
+.num {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.2rem; font-weight: 800; line-height: 1.15;}
 .bigv {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 800; margin-top: 8px;}
 [data-testid="stPlotlyChart"] {background: #111216; border: 1px solid #3A3F47; border-radius: 18px; padding: 10px 8px 4px; margin-bottom: 12px;}
 .champ {font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; color: #F5C542; background: #F5C5421F; border: 1px solid #F5C54266; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;}
-.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; margin-bottom: 12px;}
+.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px; margin-bottom: 8px; align-items: start;}
 .grid .card {margin: 0;}
 .label {color: #A7ADB6; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
 .trade {border-top: 1px solid #3A3F47; padding-top: 6px; margin-top: 6px;}
@@ -87,6 +87,14 @@ h4 {margin: 14px 0 6px;}
 .mini:last-child {border-bottom: none;}
 .mini .word {font-size: 0.6rem; padding: 2px 7px;}
 h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif !important; letter-spacing: 0.04em;}
+details.more > summary {list-style: none; cursor: pointer;}
+details.more > summary::-webkit-details-marker {display: none;}
+details.more > summary .tap {color: #A7ADB6; font-size: 0.7rem;}
+details.more > summary .tap::after {content: "▾ details";}
+details.more[open] > summary .tap::after {content: "▴ less";}
+.st-key-topbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap; gap: 8px;}
+.st-key-topbar [data-testid="stColumn"] {min-width: 0 !important; width: auto !important;}
+.st-key-topbar [data-testid="stColumn"]:last-child {flex: 0 0 auto !important;}
 .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
 """, unsafe_allow_html=True)
@@ -257,14 +265,34 @@ def save_desktop():
     save_json("prefs", {**prefs, "desktop": st.session_state.desktop_view})
 
 
+def settings_menu(where):
+    """Desktop view, notifications and log out, tucked into one small menu."""
+    with where.popover("Settings"):
+        st.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
+        try:
+            rset = get("system", "race_settings", None) or {}
+        except Exception:
+            rset = None
+        if rset is not None:
+            modes = {"trade": "Every trade", "summary": "Daily summary"}
+            cur = rset.get("pings", "summary")
+            pings = st.radio("Phone pings", list(modes), index=list(modes).index(cur), format_func=modes.get, key="pings")
+            if pings != cur:
+                try:
+                    put("system", "race_settings", {**rset, "pings": pings})
+                    st.success("Saved. Coach picks and scorecards are always sent.")
+                except Exception:
+                    st.error("Could not save the setting. Try again.")
+        if st.button("Log out"):
+            del st.session_state["user"]
+            st.rerun()
+
+
 if not desktop:  # phone view: tabs
-    st.markdown(f'<div class="row" style="justify-content:flex-start; gap:12px">{BEAR_SVG}<div class="brand">{APP_NAME}</div></div>', unsafe_allow_html=True)
-    top_l, top_m, top_r = st.columns([3, 1.3, 1])
-    top_l.markdown(f'<div class="sub" style="padding-top:10px">{now.strftime("%a %d %b, %H:%M")}</div>', unsafe_allow_html=True)
-    top_m.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
-    if top_r.button("Log out"):
-        del st.session_state["user"]
-        st.rerun()
+    top_l, top_r = st.container(key="topbar").columns([3, 1.2], vertical_alignment="center")
+    top_l.markdown(f'<div class="row" style="justify-content:flex-start; gap:10px">{BEAR_SVG}<div><div class="brand">{APP_NAME}</div>'
+                   f'<div class="sub">{now.strftime("%a %d %b, %H:%M")}</div></div></div>', unsafe_allow_html=True)
+    settings_menu(top_r)
     st.markdown(f'<div class="chips">{chips}</div>', unsafe_allow_html=True)
     home, race_tab, bt_tab, sugg, port, insiders = st.tabs(["Home", "Race", "Backtest", "Suggestions", "Portfolio", "Insiders"])
 
@@ -284,10 +312,10 @@ def lb_row(i, n, a, champ, compact=False):
     pct = f'<span class="lb-val" style="color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span>'
     if compact:
         return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
-                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · fees ${a.get("fees_paid", 0):,.2f} · {race.trades_word(a)}</span></span></div>')
+                f'<span class="lb-right">{pct} <span class="sub">${race.value(a):,.0f} · {race.trades_word(a)}</span></span></div>')
     return (f'<div class="lb-row{" lead" if i == 1 else ""}"><span class="lb-rank">{i}</span><span>{swatch(n)}{n}{champ_badge(n, champ)}</span>'
             f'<span class="lb-right">{pct}<br>'
-            f'<span class="sub">${race.value(a):,.0f} from ${a.get("contributed", 0):,.0f} · fees ${a.get("fees_paid", 0):,.2f} · {race.trades_word(a)}</span></span></div>')
+            f'<span class="sub">${race.value(a):,.0f} · {race.trades_word(a)}</span></span></div>')
 
 
 def risk_log_html(rdoc, n=10, wrap=True):
@@ -360,12 +388,16 @@ def bot_card(n, a, champ, now_utc):
     di = a.get("diary") or {}
     diary = (f'<div class="diary">{di["text"]}</div>' if di.get("day") == now_utc.astimezone(MEL).date().isoformat()
              else '<div class="sub">No diary entry yet today.</div>')
-    return (f'<div class="card" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><div class="row"><b style="font-size:1.1rem">{swatch(n)}{n}{champ_badge(n, champ)}</b>'
-            f'{mood_pill(mood(a, now_utc))}</div><div class="sub" style="margin-top:4px">{STYLES.get(n, "")}</div>'
-            f'<div class="bigv">{race.twr(a):+.2f}%</div><div class="sub">time-weighted return · ${v:,.0f} from ${a.get("contributed", 0):,.0f} put in</div>'
-            + line("Fees paid", f'${a.get("fees_paid", 0):,.2f}') + line("Open positions", str(len(a["positions"])))
-            + line("Win rate", rate) + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
-            + f'<div class="label">Today&#39;s diary</div>{diary}</div>')
+    r = race.twr(a)
+    held = ", ".join(x["ticker"].replace(".AX", "").replace("-AUD", "") for x in a["positions"]) or "cash"
+    return (f'<details class="card more" style="border-top: 3px solid {RACER_COLOR.get(n, GREY)}"><summary>'
+            f'<div class="row"><b style="font-size:1.05rem">{swatch(n)}{n}{champ_badge(n, champ)}</b>{mood_pill(mood(a, now_utc))}</div>'
+            f'<div class="row" style="margin-top:4px"><span class="bigv" style="margin:0; color:{GREEN if r > 0 else RED if r < 0 else "inherit"}">{r:+.2f}%</span>'
+            f'<span class="sub" style="text-align:right">${v:,.0f} · holding {held}<br><span class="tap"></span></span></div></summary>'
+            f'<div class="sub" style="margin-top:6px">{STYLES.get(n, "")}</div>'
+            + line("Put in", f'${a.get("contributed", 0):,.0f}') + line("Fees paid", f'${a.get("fees_paid", 0):,.2f}') + line("Win rate", rate)
+            + f'<div class="label">Positions</div>{pos}<div class="label">Last 3 trades</div>{trades}'
+            + f'<div class="label">Today&#39;s diary</div>{diary}</details>')
 
 
 # ---------- Desktop view: the whole dashboard on one screen, no page scrolling ----------
@@ -383,7 +415,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 .pn-h {display: flex; justify-content: space-between; gap: 8px; color: #A7ADB6; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;}
 .h-mid {height: var(--mid);} .h-bot {height: var(--bot);}
 .h-lb {height: calc(var(--mid) - 35vh - 0.45rem);}
-.h-home {height: calc(var(--mid) * 0.4 - 0.25rem);} .h-risk {height: calc(var(--mid) * 0.32 - 0.7rem);} .h-hof {height: calc(var(--mid) * 0.28 - 2.4rem);}
+.h-home {height: calc(var(--mid) * 0.4 - 0.25rem);} .h-risk {height: calc(var(--mid) * 0.32 - 0.7rem);} .h-hof {height: calc(var(--mid) * 0.28 - 0.7rem);}
 .tb {display: flex; align-items: center; gap: 0.7rem; white-space: nowrap; overflow: hidden;}
 .tb svg {width: 30px; height: 30px; flex: none;}
 .tb .brand {font-size: 0.95rem;}
@@ -393,6 +425,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 .pn .big {font-size: 1.7rem;}
 .mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; padding: 0.28rem 0; border-bottom: 1px solid #3A3F47;}
 .mini:last-child {border-bottom: none;}
+.pn .mini .sub {display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;}
 .bcs {display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); gap: 0.45rem;}
 .bc {background: #0E0F12; border: 1px solid #3A3F47; border-radius: 10px; padding: 0.4rem 0.55rem;}
 .bc .v {font-family: MONO; font-weight: 800; font-size: 1.02rem; margin-top: 2px;}
@@ -430,13 +463,10 @@ def render_desktop():
     total = sum(pots.values())
     mchips = "".join(f'<span class="mchip"><span class="dot" style="background:{GREEN if o else GREY}"></span>{n} {"open" if o else "opens " + fmt_left(left)}</span>'
                      for n, o, left in mkts) + f'<span class="mchip"><span class="dot" style="background:{GREEN}"></span>Crypto open</span>'
-    c_brand, c_race, c_view, c_out = st.columns([7.2, 1.7, 1.25, 0.8], vertical_alignment="center")
+    c_brand, c_race, c_set = st.columns([7.2, 1.7, 1.1], vertical_alignment="center")
     c_brand.markdown(f'<div class="tb">{BEAR_SVG}<span class="brand">{APP_NAME}</span><span class="sub">{now.strftime("%a %d %b, %H:%M")}</span>{mchips}</div>', unsafe_allow_html=True)
     pick_race = c_race.radio("Race", ["STOCKS", "CRYPTO"], horizontal=True, label_visibility="collapsed", key="race_pick")
-    c_view.toggle("Desktop view", key="desktop_view", on_change=save_desktop)
-    if c_out.button("Log out"):
-        del st.session_state["user"]
-        st.rerun()
+    settings_menu(c_set)
 
     rc = next(r for r in race.ALL_RACES.values() if r["name"] == pick_race)
     rdoc = None
@@ -462,19 +492,6 @@ def render_desktop():
     left.markdown(pn("Risk manager", (risk_log_html(rdoc, wrap=False) if rdoc else "") or '<div class="sub">No decisions yet.</div>', "h-risk", "last 10"),
                   unsafe_allow_html=True)
     left.markdown(pn("Hall of Fame", hof_html or f'<div class="sub">No scorecards yet.{ends}</div>', "h-hof", rc["name"]), unsafe_allow_html=True)
-    try:
-        rset = get("system", "race_settings", None) or {}
-    except Exception:
-        rset = None
-    if rset is not None:
-        modes = {"trade": "Pings: every trade", "summary": "Pings: daily summary"}
-        cur = rset.get("pings", "summary")
-        pings = left.radio("Pings", list(modes), index=list(modes).index(cur), format_func=modes.get, horizontal=True, key="pings", label_visibility="collapsed")
-        if pings != cur:
-            try:
-                put("system", "race_settings", {**rset, "pings": pings})
-            except Exception:
-                left.error("Could not save the setting.")
 
     # centre: leaderboard, then the chart; right: racer cards
     if not rdoc:
@@ -494,7 +511,7 @@ def render_desktop():
         grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=10))
         fig.update_layout(autosize=True, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                           font=dict(color="#A7ADB6", size=10), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
-                          legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0, font=dict(size=10)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
+                          showlegend=False, xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))  # leaderboard colours are the legend
         centre.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "responsive": True})
         right.markdown(pn("Racers", '<div class="bcs">' + "".join(bot_mini(n, rdoc["accounts"][n], now_utc) for n, _ in table) + "</div>", "h-mid",
                           "mood · value · last trade"), unsafe_allow_html=True)
@@ -564,15 +581,14 @@ def render_race_tab():
     if rdoc:
         table = race.standings(rdoc)
         champ = rdoc.get("champion")
-        st.markdown(f'<div class="sub" style="margin-bottom:6px">Ranked by time-weighted return on money put in · {rc["broker"]} fees · '
-                    f'paper money only, no real orders</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sub" style="margin-bottom:6px">Paper money · {rc["broker"]} fees · ranked by time-weighted return</div>', unsafe_allow_html=True)
         accts = rdoc["accounts"]
         lead_n = table[0][0]
         bench_r = race.twr(accts[race.BENCH])
         movers = [n for n in race.RACERS if n != race.BENCH]
         beat = sum(1 for n in movers if race.twr(accts[n]) > bench_r)
         kpis = [("Leader", f"{swatch(lead_n)}{lead_n}", f"{race.twr(accts[lead_n]):+.2f}%"),
-                ("Next scorecard", f"{race.days_left(rdoc, now_utc)} days", f"scorecard {rdoc['scorecard']}, every 3 weeks"),
+                ("Scorecard in", f"{race.days_left(rdoc, now_utc)} days", f"number {rdoc['scorecard']}"),
                 ("Trades", str(sum(n_trades(accts[n]) for n in movers)), f"fees ${sum(accts[n].get('fees_paid', 0) for n in movers):,.2f}"),
                 ("Beating Buy and Hold", f"{beat} of {len(movers)}", f"benchmark {bench_r:+.2f}%")]
         st.markdown('<div class="kpis">' + "".join(f'<div class="kpi"><div class="label">{k}</div><div class="num">{v}</div><div class="sub">{s}</div></div>'
@@ -587,14 +603,14 @@ def render_race_tab():
                                      line=dict(width=1.6, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid"),
                                      hovertemplate="%{y:$,.0f}"))
         grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=11))
-        fig.update_layout(height=340, margin=dict(l=8, r=8, t=8, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        fig.update_layout(height=250, margin=dict(l=6, r=6, t=6, b=6), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                           font=dict(color="#A7ADB6", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
-                          legend=dict(orientation="h", y=-0.18, font=dict(size=11)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
+                          showlegend=False, xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))  # leaderboard colours are the legend
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.markdown('<div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
-        st.markdown("#### Risk manager")
-        st.markdown(risk_log_html(rdoc) or '<div class="card sub">No decisions yet. The risk manager checks every trade a bot wants to open.</div>', unsafe_allow_html=True)
-    st.markdown("#### Hall of Fame")
+        st.markdown('<div class="label">Racers · tap a card for trades and diary</div><div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
+        with st.expander("Risk manager · last 10 decisions"):
+            st.markdown(risk_log_html(rdoc) or '<div class="sub">No decisions yet. It checks every trade a bot wants to open.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="label">Hall of Fame</div>', unsafe_allow_html=True)
     try:
         hof = get("system", "hall_of_fame", None) or []
     except Exception:
@@ -603,26 +619,14 @@ def render_race_tab():
     if not past:
         ends = f" Scorecard {rdoc['scorecard']} lands {race.scorecard_end(rdoc).astimezone(MEL).strftime('%a %d %b')}." if rdoc else ""
         st.markdown(f'<div class="card sub">No scorecards yet.{ends}</div>', unsafe_allow_html=True)
+    hof_rows = ""
     for e in reversed(past):
         label, win_pct, bench_pct = hof_view(e)
-        when = f'{datetime.fromisoformat(e["start"]).astimezone(MEL).strftime("%d %b")} to {datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}'
-        st.markdown(f'<div class="card"><div class="row"><b style="font-size:1.1rem">{label}</b><span class="champ">{e["winner"].upper()}</span></div>'
-                    + line("Winner", f'{e["winner"]} {win_pct:+.1f}% over the 3 weeks')
-                    + (line("Buy and Hold", f'{bench_pct:+.1f}%') if bench_pct is not None else "") + line("Dates", when) + '</div>', unsafe_allow_html=True)
-    try:
-        rset = get("system", "race_settings", None) or {}
-    except Exception:
-        rset = None
-    modes = {"trade": "Pings: every trade", "summary": "Pings: daily summary"}
-    if rset is not None:
-        cur = rset.get("pings", "summary")
-        pings = st.radio("Notifications", list(modes), index=list(modes).index(cur), format_func=modes.get, horizontal=True, key="pings")
-        if pings != cur:
-            try:
-                put("system", "race_settings", {**rset, "pings": pings})
-                st.success(f"Saved: {modes[pings]}. Season results are always sent.")
-            except Exception:
-                st.error("Could not save the setting. Try again.")
+        bench = f' · Buy and Hold {bench_pct:+.1f}%' if bench_pct is not None else ""
+        hof_rows += line(f'<b>{label}</b> <span class="sub">to {datetime.fromisoformat(e["end"]).astimezone(MEL).strftime("%d %b %Y")}{bench}</span>',
+                         f'{swatch(e["winner"])}{e["winner"]} {win_pct:+.1f}%')
+    if hof_rows:
+        st.markdown(f'<div class="card">{hof_rows}</div>', unsafe_allow_html=True)
 
 # ---------- Home ----------
 with home:
@@ -630,7 +634,6 @@ with home:
     st.markdown(f'<div class="hero"><div class="sub">Hi {USER}</div><div class="big" style="margin-top:6px">${total:,.0f}</div>'
                 f'<div class="sub">in your pots</div><div style="margin-top:10px">Today {money(total_pl)} '
                 f'<span class="sub">&nbsp;{ups} up · {downs} down</span></div></div>', unsafe_allow_html=True)
-    st.markdown("#### Your pots")
     boxes = "".join(f'<div class="card" style="flex:1; margin:0"><div class="sub">{POT_NAME[k]}</div>'
                      f'<b>${pots[k]:,.0f}</b><div class="sub">${cash[k]:,.0f} free</div></div>' for k in pots)
     st.markdown(f'<div class="row" style="align-items:stretch">{boxes}</div>', unsafe_allow_html=True)
@@ -922,6 +925,7 @@ with insiders:
     except Exception as e:
         trades = []
         st.warning(f"Couldn't load right now: {e}")
+    ins_html = ""
     for t in trades[:40]:
         if not isinstance(t, dict):
             continue
@@ -935,9 +939,10 @@ with insiders:
         role = "Senator" if "sen" in chamber else "House member" if ("house" in chamber or "rep" in chamber) else "US politician"
         tag = ", ".join(x for x in [role, party, state] if x)
         w = "BUY" if ("purchase" in kind_txt or "buy" in kind_txt) else "SELL" if ("sale" in kind_txt or "sell" in kind_txt) else "HOLD"
-        body = f'<div class="sub" style="margin-top:4px">{who} ({tag})</div>'
-        body += line("Amount", pick(t, "amount", "amount_range", "range")) + line("Date", pick(t, "transaction_date", "traded", "trade_date", "date"))
-        card(tick or "?", w, body)
+        ins_html += mini(f'{pill(w)} <b>{tick or "?"}</b><br><span class="sub">{who} ({tag})</span>',
+                         f'{pick(t, "amount", "amount_range", "range")}<br><span class="sub">{pick(t, "transaction_date", "traded", "trade_date", "date")}</span>')
+    if ins_html:
+        st.markdown(f'<div class="card">{ins_html}</div>', unsafe_allow_html=True)
     if trades:
         with st.expander("Raw data (for fixing)"):
             st.json(trades[0])
