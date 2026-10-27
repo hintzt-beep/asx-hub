@@ -764,8 +764,8 @@ def render_backtest_tab():
     st.markdown('<div class="card">' + "".join(f'<div style="margin:4px 0">{s}</div>' for s in bt.get("summary", [])) + '</div>', unsafe_allow_html=True)
 
 
-LAB_VERDICT = {"promising": (GREEN, "Promising: more winners than luck explains"),
-               "weak": (AMBER, "Weak: about what luck alone would give"),
+LAB_VERDICT = {"promising": (GREEN, "Promising: far more winners than luck explains"),
+               "weak": (AMBER, "Weak: not clearly more than luck"),
                "none": (RED, "Nothing beat Buy and Hold")}
 
 

@@ -16,9 +16,9 @@ The history is split: practice (first 70%) and test (last 30%, unseen). A strate
   4. beat Buy and Hold in BOTH halves of the test period (a lucky streak rarely lasts through both).
 Only the 200 best practice performers per fee setting go through rules 2-4 (finalists).
 
-Similar strategies tend to get lucky together, so the overall verdict uses a whole-lab luck test too: the entire grid is
-rerun 20 times with every share's buy days shifted to random dates (shared by all strategies, so they stay alike).
-The verdict is only "promising" if the real lab finds more winners (rules 1, 2 and 4) than 19 of those 20 no-skill reruns.
+Similar strategies tend to get lucky together, so a handful of survivors proves little. The verdict is "promising" only
+with at least 5 survivors and 5x more than luck predicts. Calibrated on made-up prices (--synthetic): on pure noise
+(6 runs) survivors never passed 3.6x luck; with a planted momentum edge (LAB_PLANT=0.3) they were about 11x luck.
 Rule 3 is the guard against luck: test thousands of strategies and some look great by chance alone. The report also shows how
 many finalists luck alone would get through: the share of the shifted copies that pass rules 2-4.
 
@@ -46,7 +46,7 @@ MAX_OPEN = 4
 START_CASH = 5000.0
 MIN_TRADES_PRACTICE, MIN_TRADES_TEST, MAX_DD = 20, 8, 35.0
 LUCK_PCTL, SHUFFLES, FINALISTS = 95, 40, 200
-NULL_RUNS = int(os.environ.get("LAB_NULL_RUNS", "20"))   # whole-lab reruns with every buy day shifted      # each finalist is compared with 40 copies of itself whose buy days are shifted at random
+PROMISING_RATIO, PROMISING_MIN = 5, 5   # "promising" needs 5x more survivors than luck predicts, and at least 5      # each finalist is compared with 40 copies of itself whose buy days are shifted at random
 
 STOCKS = ["ALL.AX", "ANZ.AX", "BHP.AX", "BOE.AX", "CBA.AX", "COL.AX", "CSL.AX", "EVN.AX", "FMG.AX", "GMG.AX",
           "IGO.AX", "LYC.AX", "MIN.AX", "MQG.AX", "NAB.AX", "NST.AX", "PDN.AX", "PLS.AX", "QBE.AX", "REA.AX",
@@ -278,9 +278,7 @@ def run_one(job):
     for t, d in G["data"].items():
         sig = signal(d["F"], fam, p, regime)
         if seed:  # luck copy: same signals, moved to random dates (circular shift per share)
-            # seed > 0: a copy of one strategy; seed < 0: a whole-lab rerun (same shift for every strategy on this share)
-            rng = np.random.default_rng((seed * 100003 + zlib.crc32(t.encode()) % 100003 + sid * 7) if seed > 0
-                                        else (-seed * 7919 + zlib.crc32(t.encode()) % 100003 + 13))
+            rng = np.random.default_rng(seed * 100003 + zlib.crc32(t.encode()) % 100003 + sid * 7)
             n = len(sig) - 200  # shift only inside the usable part, so no signals are lost to the warm-up
             if n > 200:
                 sig = sig.copy()
@@ -381,16 +379,11 @@ def run_market(key, prices, workers, limit=None):
     luck = {}
     for (sid, k), res in run_jobs([(sid, *rest) for (sid, k), *rest in luck_jobs], payload, workers, keep_order=True, keys=[x[0] for x in luck_jobs]):
         luck.setdefault(sid, []).append(res)
-    null_winners = {mn: [] for mn in m["fees"]}
-    for rep_ in range(1, NULL_RUNS + 1):
-        rres = run_jobs([(sid, fam, p, rg, ex, -rep_) for sid, (fam, p, rg, ex) in meta.items()], payload, workers)
-        for mn in m["fees"]:
-            null_winners[mn].append(count_winners(rres, mn, bh_all[mn]))
     secs = time.time() - started
     out = {"name": m["name"], "tickers": len(data), "period": {"start": day_s(t0), "split": day_s(split), "mid": day_s(mid), "end": day_s(t1 - 1)},
            "seconds": round(secs), "tested": len(grid), "fees": {}}
     for mode_name in m["fees"]:
-        out["fees"][mode_name] = select(results, luck, meta, mode_name, bh_all[mode_name], null_winners[mode_name])
+        out["fees"][mode_name] = select(results, luck, meta, mode_name, bh_all[mode_name])
     return out
 
 
@@ -418,18 +411,12 @@ def base_test(r, bh):
             and r["test_a"]["return_pct"] > z(bh["test_a"]) and r["test_b"]["return_pct"] > z(bh["test_b"]))
 
 
-def count_winners(results, mode_name, bh):
-    """Winners = top finalists by practice that also pass rules 2 and 4 (no per-strategy luck bar, so reruns stay cheap)."""
-    ok = sorted((r[mode_name] for r in results.values() if passes_practice(r[mode_name], bh)), key=lambda r: -r["practice"]["return_pct"])
-    return sum(1 for r in ok[:FINALISTS] if base_test(r, bh))
-
-
 def passes_practice(r, bh):
     p, bh_p = r["practice"], (bh["practice"] if bh["practice"] is not None else 0.0)
     return p["trades"] >= MIN_TRADES_PRACTICE and p["return_pct"] > bh_p and p["max_drop_pct"] <= MAX_DD
 
 
-def select(results, luck, meta, mode_name, bh, null_winners):
+def select(results, luck, meta, mode_name, bh):
     bh_t = bh["test"] if bh["test"] is not None else 0.0
     real = [(sid, r[mode_name]) for sid, r in results.items()]
 
@@ -455,8 +442,7 @@ def select(results, luck, meta, mode_name, bh, null_winners):
     expected = round(expected, 1)
     score = lambda r: r["test"]["return_pct"] / max(r["test"]["max_drop_pct"], 5.0)
     survivors.sort(key=lambda x: -score(x[1]))
-    null_bar = float(np.percentile(null_winners, 95)) if null_winners else None
-    if survivors and null_bar is not None and len(beat_bh) > null_bar and len(survivors) >= max(2, 2 * expected):
+    if len(survivors) >= max(PROMISING_MIN, PROMISING_RATIO * expected):
         verdict = "promising"
     elif survivors:
         verdict = "weak"
@@ -477,15 +463,14 @@ def select(results, luck, meta, mode_name, bh, null_winners):
             fams[fam] = {"test_return_pct": r["test"]["return_pct"], "plain": describe(*meta[sid])}
     return {"fee_name": FEE_NAMES[mode_name], "buy_and_hold": bh, "verdict": verdict,
             "counts": {"tested": len(real), "passed_practice": len(practice_ok), "finalists": len(finalists), "beat_buy_and_hold_in_test": len(beat_bh),
-                       "no_skill_reruns": sorted(null_winners), "no_skill_bar": null_bar,
                        "survived": len(survivors), "expected_by_luck": expected},
             "survivors": [card(s, r) for s, r in survivors[:15]],
             "practice_stars_that_failed": [card(s, r) for s, r in finalists if not passes_test(s, r)][:5],
             "best_by_family": fams}
 
 
-VERDICT = {"promising": "More survivors than luck explains. Worth paper-trading the best ones live.",
-           "weak": "A few survivors, but about as many as luck alone would give. Treat with suspicion.",
+VERDICT = {"promising": "Far more survivors than luck explains. Worth paper-trading the best ones live.",
+           "weak": "Some survivors, but not clearly more than luck could give. Treat with suspicion.",
            "none": "Nothing beat Buy and Hold and the luck test on unseen data. Buy and Hold wins here."}
 
 
@@ -501,8 +486,6 @@ def summary(res):
                     f"{c['survived']} of the top {c['finalists']} also won on unseen data, in both halves, and beat the luck test (luck alone would give about {c['expected_by_luck']:g}).")
             if bh["test"] is not None:
                 head += f" Buy and Hold made {bh['test']:+.1f}% in the test period."
-            if c.get("no_skill_bar") is not None:
-                head += f" Winners {c['beat_buy_and_hold_in_test']} vs no-skill reruns {c['no_skill_reruns']}."
             lines.append(head)
             lines.append("  " + VERDICT[r["verdict"]])
             if r["survivors"]:
