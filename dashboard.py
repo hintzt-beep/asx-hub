@@ -17,85 +17,117 @@ st.set_page_config(page_title="Hub", page_icon="📈", layout="wide", initial_si
 ADMIN_PASSWORD = os.environ.get("TY_PASSWORD", "change-me-ty")
 OWNER = "Ty"  # Supabase owner key for Admin's saved data (kept so existing data still loads)
 
-GREEN, RED, AMBER, GREY = "#22C55E", "#EF4444", "#F59E0B", "#8A94A6"
+GREEN, RED, AMBER, GREY = "#9BFF57", "#FF5252", "#F59E0B", "#5E665F"
 WORD_COLOR = {"BUY": GREEN, "SELL": RED, "HOLD": AMBER}
 MEL = ZoneInfo("Australia/Melbourne")
 
 # Original angular robot-bear head, one glowing red eye (inline SVG).
 BEAR_SVG = ('<svg width="56" height="56" viewBox="0 0 64 64" fill="none" stroke-linejoin="miter" role="img" aria-label="Robot bear">'
-            '<polygon points="6,13 12,6 22,6 27,13 22,22 10,22" fill="#16181C" stroke="#3A3F47" stroke-width="1.6"/>'
-            '<polygon points="58,13 52,6 42,6 37,13 42,22 54,22" fill="#16181C" stroke="#3A3F47" stroke-width="1.6"/>'
-            '<polygon points="12,13 15,10 19,10 21,14 18,18 13,18" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1"/>'
-            '<polygon points="52,13 49,10 45,10 43,14 46,18 51,18" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1"/>'
-            '<polygon points="13,22 22,12 42,12 51,22 51,43 41,55 23,55 13,43" fill="#1B1E23" stroke="#3A3F47" stroke-width="1.8"/>'
-            '<polyline points="26,17 32,20 38,17" stroke="#3A3F47" stroke-width="1.4"/>'
-            '<polygon points="19,27 29,29 28,33 19,32" fill="#0A0A0C" stroke="#3A3F47" stroke-width="1.2"/>'
-            '<polygon points="45,27 35,29 36,33 45,32" fill="#FF2A3A" style="filter: drop-shadow(0 0 4px #FF2A3A)"/>'
-            '<polygon points="23,38 41,38 44,50 20,50" fill="#111317" stroke="#3A3F47" stroke-width="1.4"/>'
-            '<polygon points="28,40 36,40 32,45" fill="#C1121F"/>'
-            '<path d="M24 47H28M36 47H40M32 45V50" stroke="#3A3F47" stroke-width="1.3"/>'
-            '<circle cx="16.5" cy="40" r="1.3" fill="#3A3F47"/><circle cx="47.5" cy="40" r="1.3" fill="#3A3F47"/></svg>')
+            '<polygon points="6,13 12,6 22,6 27,13 22,22 10,22" fill="#1A201C" stroke="#2A322C" stroke-width="1.6"/>'
+            '<polygon points="58,13 52,6 42,6 37,13 42,22 54,22" fill="#1A201C" stroke="#2A322C" stroke-width="1.6"/>'
+            '<polygon points="12,13 15,10 19,10 21,14 18,18 13,18" fill="#080A09" stroke="#2A322C" stroke-width="1"/>'
+            '<polygon points="52,13 49,10 45,10 43,14 46,18 51,18" fill="#080A09" stroke="#2A322C" stroke-width="1"/>'
+            '<polygon points="13,22 22,12 42,12 51,22 51,43 41,55 23,55 13,43" fill="#1A201C" stroke="#2A322C" stroke-width="1.8"/>'
+            '<polyline points="26,17 32,20 38,17" stroke="#2A322C" stroke-width="1.4"/>'
+            '<polygon points="19,27 29,29 28,33 19,32" fill="#080A09" stroke="#2A322C" stroke-width="1.2"/>'
+            '<polygon points="45,27 35,29 36,33 45,32" fill="#9BFF57" style="filter: drop-shadow(0 0 4px #9BFF57)"/>'
+            '<polygon points="23,38 41,38 44,50 20,50" fill="#0D100E" stroke="#2A322C" stroke-width="1.4"/>'
+            '<polygon points="28,40 36,40 32,45" fill="#39D353"/>'
+            '<path d="M24 47H28M36 47H40M32 45V50" stroke="#2A322C" stroke-width="1.3"/>'
+            '<circle cx="16.5" cy="40" r="1.3" fill="#2A322C"/><circle cx="47.5" cy="40" r="1.3" fill="#2A322C"/></svg>')
 APP_NAME = "IRONPAW"
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 #MainMenu, footer {visibility: hidden;}
 header[data-testid="stHeader"] {background: transparent;}
 .block-container {padding: 0.8rem 0.8rem 3rem;}
 @media (min-width: 768px) {.block-container {padding: 1.4rem 2.5rem 3rem;}}
-.card {background: #111216; border: 1px solid #3A3F47; border-radius: 14px; padding: 10px 14px; margin-bottom: 8px;}
-.hero {background: linear-gradient(135deg, #C1121F2E, #C1121F0F); border: 1px solid #C1121F99; box-shadow: 0 0 20px #C1121F4D; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;}
-.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #F2F4F7; text-shadow: 0 0 10px #C1121F80; font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-.brand {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif; font-weight: 900; font-size: 1.15rem; letter-spacing: 0.18em; color: #F2F4F7; text-shadow: 0 0 8px #C1121F99;}
-.sub {color: #A7ADB6; font-size: 0.8rem;}
+.card {background: #111512; border: 1px solid #2A322C; border-radius: 14px; padding: 10px 14px; margin-bottom: 8px;}
+.hero {background: linear-gradient(135deg, #9BFF572E, #9BFF570F); border: 1px solid #9BFF5799; box-shadow: 0 0 20px #9BFF574D; border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;}
+.big {font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: #E6EAE6; text-shadow: 0 0 10px #9BFF5780; font-family: 'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+.brand {font-family: 'Chakra Petch', 'Eurostile', sans-serif; font-weight: 900; font-size: 1.15rem; letter-spacing: 0.18em; color: #E6EAE6; text-shadow: 0 0 8px #9BFF5799;}
+.sub {color: #858D86; font-size: 0.8rem;}
 .row {display: flex; justify-content: space-between; align-items: center; gap: 8px;}
 .word {padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em;}
 .chips {display: flex; gap: 6px; overflow-x: auto; margin-bottom: 8px; padding-bottom: 2px;}
-.chip {flex: 0 0 auto; background: #111216; border: 1px solid #3A3F47; border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; white-space: nowrap;}
+.chip {flex: 0 0 auto; background: #111512; border: 1px solid #2A322C; border-radius: 999px; padding: 4px 10px; font-size: 0.72rem; white-space: nowrap;}
 .dot {display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;}
-.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #3A3F47; box-shadow: 0 0 8px #C1121F33;}
-.stButton button:hover {border-color: #C1121F; box-shadow: 0 0 14px #C1121F80;}
+.stButton button {border-radius: 12px; width: 100%; min-height: 46px; font-weight: 700; border: 1px solid #2A322C; box-shadow: 0 0 8px #9BFF5733;}
+.stButton button:hover {border-color: #9BFF57; box-shadow: 0 0 14px #9BFF5780;}
 .stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {color: #FFFFFF;}
 button[data-baseweb="tab"] {font-size: 0.95rem; font-weight: 700;}
-button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: #FF4D5A; text-shadow: 0 0 8px #C1121FCC;}
-div[data-baseweb="tab-highlight"] {background-color: #C1121F; box-shadow: 0 0 8px #C1121F;}
-div[data-baseweb="tab-border"] {background-color: #3A3F47;}
-div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #3A3F47;}
-[data-testid="stExpander"] details {border: 1px solid #3A3F47; border-radius: 12px;}
+button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: #9BFF57; text-shadow: 0 0 8px #9BFF57CC;}
+div[data-baseweb="tab-highlight"] {background-color: #9BFF57; box-shadow: 0 0 8px #9BFF57;}
+div[data-baseweb="tab-border"] {background-color: #2A322C;}
+div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 12px; border: 1px solid #2A322C;}
+[data-testid="stExpander"] details {border: 1px solid #2A322C; border-radius: 12px;}
 h4 {margin: 10px 0 4px; font-size: 1rem;}
-.lb-row {display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 9px 8px; border-bottom: 1px solid #3A3F47;}
+.lb-row {display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 9px 8px; border-bottom: 1px solid #2A322C;}
 .lb-row:last-child {border-bottom: none;}
-.lb-row.lead {background: #C1121F1F; border-radius: 10px;}
-.lb-rank, .lb-val {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+.lb-row.lead {background: #9BFF571F; border-radius: 10px;}
+.lb-rank, .lb-val {font-family: 'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
 .lb-val {font-weight: 800; font-size: 1.05rem;}
 .lb-right {text-align: right; line-height: 1.25;}
 .swatch {display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: middle;}
 .kpis {display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 8px;}
-.kpi {background: #111216; border: 1px solid #3A3F47; border-radius: 12px; padding: 8px 12px;}
+.kpi {background: #111512; border: 1px solid #2A322C; border-radius: 12px; padding: 8px 12px;}
 .kpi .label {margin: 0 0 4px;}
-.num {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.2rem; font-weight: 800; line-height: 1.15;}
-.bigv {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 800; margin-top: 8px;}
-[data-testid="stPlotlyChart"] {background: #111216; border: 1px solid #3A3F47; border-radius: 18px; padding: 10px 8px 4px; margin-bottom: 12px;}
+.num {font-family: 'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.2rem; font-weight: 800; line-height: 1.15;}
+.bigv {font-family: 'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 800; margin-top: 8px;}
+[data-testid="stPlotlyChart"] {background: #111512; border: 1px solid #2A322C; border-radius: 18px; padding: 10px 8px 4px; margin-bottom: 12px;}
 .champ {font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; color: #F5C542; background: #F5C5421F; border: 1px solid #F5C54266; border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: middle;}
 .grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px; margin-bottom: 8px; align-items: start;}
 .grid .card {margin: 0;}
-.label {color: #A7ADB6; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
-.trade {border-top: 1px solid #3A3F47; padding-top: 6px; margin-top: 6px;}
+.label {color: #858D86; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 4px;}
+.trade {border-top: 1px solid #2A322C; padding-top: 6px; margin-top: 6px;}
 .diary {font-style: italic; font-size: 0.85rem;}
-.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.85rem; padding: 0.35rem 0; border-bottom: 1px solid #3A3F47;}
+.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.85rem; padding: 0.35rem 0; border-bottom: 1px solid #2A322C;}
 .mini:last-child {border-bottom: none;}
 .mini .word {font-size: 0.6rem; padding: 2px 7px;}
-h1, h2, h3, h4 {font-family: 'Orbitron', 'Eurostile', 'Bank Gothic', sans-serif !important; letter-spacing: 0.04em;}
+h1, h2, h3, h4 {font-family: 'Chakra Petch', 'Eurostile', sans-serif !important; letter-spacing: 0.04em;}
 details.more > summary {list-style: none; cursor: pointer;}
 details.more > summary::-webkit-details-marker {display: none;}
-details.more > summary .tap {color: #A7ADB6; font-size: 0.7rem;}
+details.more > summary .tap {color: #858D86; font-size: 0.7rem;}
 details.more > summary .tap::after {content: "▾ details";}
 details.more[open] > summary .tap::after {content: "▴ less";}
 .st-key-topbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap; gap: 8px;}
 .st-key-topbar [data-testid="stColumn"] {min-width: 0 !important; width: auto !important;}
 .st-key-topbar [data-testid="stColumn"]:last-child {flex: 0 0 auto !important;}
-.card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
+.card b {font-family: 'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
+/* ---------- Neo punk layer: acid on black, cut-steel panels ---------- */
+:root {--bg: #080A09; --s1: #111512; --s2: #1A201C; --acid: #9BFF57; --phos: #39D353; --ink: #E6EAE6; --mute: #858D86; --loss: #FF5252; --line: #2A322C;}
+.stApp {background: var(--bg) repeating-linear-gradient(0deg, rgba(155,255,87,0.025) 0 1px, transparent 1px 4px);}
+.stMarkdown, .stMarkdown p, .stMarkdown div, .stMarkdown span:not([data-testid]), label p, button p, input, .stRadio label, .stToggle label {font-family: 'Chakra Petch', 'Eurostile', sans-serif;}
+.card, .kpi, .hero, [data-testid="stPlotlyChart"], [data-testid="stExpander"] details, .pn, .bc {
+  border-radius: 0 !important; position: relative;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));}
+.card::before, .kpi::before, .pn::before {content: ""; position: absolute; top: 0; left: 0; width: 22px; height: 2px; background: var(--acid);}
+.card, .kpi {background: linear-gradient(180deg, var(--s2) 0, var(--s1) 38px); border: 1px solid var(--line);}
+.hero {background: linear-gradient(120deg, rgba(155,255,87,0.10), rgba(155,255,87,0.02) 60%), var(--s1); border: 1px solid rgba(155,255,87,0.45); box-shadow: none;}
+.big, .bigv, .num, .lb-val {letter-spacing: 0.02em; font-variant-numeric: tabular-nums;}
+.big {text-shadow: 0 0 14px rgba(155,255,87,0.35);}
+.brand {font-weight: 700; letter-spacing: 0.32em; font-size: 1.2rem; text-shadow: 0 0 10px rgba(155,255,87,0.55);}
+.label, .pn-h {letter-spacing: 0.12em; color: var(--mute);}
+.label::before {content: "// "; color: var(--phos);}
+.lb-row {border-bottom: 1px dashed var(--line);}
+.lb-row.lead {background: linear-gradient(90deg, rgba(155,255,87,0.16), transparent 75%); border-radius: 0; box-shadow: inset 2px 0 0 var(--acid);}
+.word {border-radius: 2px !important; letter-spacing: 0.14em;}
+.chip, .mchip {border-radius: 2px; background: var(--s1);}
+.stButton button, [data-testid="stPopover"] button {border-radius: 0 !important; border: 1px solid var(--line); box-shadow: none; text-transform: none;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));}
+.stButton button:hover, [data-testid="stPopover"] button:hover {border-color: var(--acid); color: var(--acid); box-shadow: none;}
+.stButton button[kind="primary"], .stButton button[data-testid="stBaseButton-primary"] {background: var(--acid); color: #061003; border-color: var(--acid);}
+button[data-baseweb="tab"][aria-selected="true"], [data-testid="stTab"][aria-selected="true"] {color: var(--acid); text-shadow: 0 0 8px rgba(155,255,87,0.6);}
+div[data-baseweb="tab-highlight"] {background-color: var(--acid); box-shadow: 0 0 10px var(--acid); height: 2px;}
+div[data-baseweb="input"], div[data-baseweb="select"] > div {border-radius: 0; border: 1px solid var(--line);}
+*:focus-visible {outline: 2px solid var(--acid) !important; outline-offset: 2px;}
+.dot {border-radius: 1px;}
+@media (prefers-reduced-motion: no-preference) {
+  .chip .dot[style*="9BFF57"], .mchip .dot[style*="9BFF57"] {animation: pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse {50% {box-shadow: 0 0 0 3px rgba(155,255,87,0.18);}}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -299,7 +331,7 @@ if not desktop:  # phone view: tabs
 # ---------- Race ----------
 MOOD_COLOR = {"Buying": GREEN, "Selling": RED, "Holding": AMBER, "Waiting": GREY, "Benched": GREY}
 RACER_COLOR = {"Tyler": "#FF8A3D", "Ryan": "#F5C542", "Nathan": "#4FD1C5", "Newton": "#7AA2FF", "Morpheus": "#C084FC",
-               "Coach's Picks": "#F472B6", "Buy and Hold": "#A7ADB6"}
+               "Coach's Picks": "#F472B6", "Buy and Hold": "#9AA39B"}
 
 
 def n_trades(a):
@@ -411,32 +443,32 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 [data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style) {display: none;}
 [data-testid="stElementContainer"]:has(iframe) {position: absolute; height: 0; overflow: hidden;}
 :root {--top: 2.7rem; --bot: 24vh; --mid: calc(100vh - var(--top) - var(--bot) - 2.1rem);}
-.pn {background: #111216; border: 1px solid #3A3F47; border-radius: 12px; padding: 0.5rem 0.7rem; margin-bottom: 0.7rem; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3A3F47 transparent;}
-.pn-h {display: flex; justify-content: space-between; gap: 8px; color: #A7ADB6; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;}
+.pn {background: #111512; border: 1px solid #2A322C; border-radius: 12px; padding: 0.5rem 0.7rem; margin-bottom: 0.7rem; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2A322C transparent;}
+.pn-h {display: flex; justify-content: space-between; gap: 8px; color: #858D86; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;}
 .h-mid {height: var(--mid);} .h-bot {height: var(--bot);}
 .h-lb {height: calc(var(--mid) - 35vh - 0.45rem);}
 .h-home {height: calc(var(--mid) * 0.4 - 0.25rem);} .h-risk {height: calc(var(--mid) * 0.32 - 0.7rem);} .h-hof {height: calc(var(--mid) * 0.28 - 0.7rem);}
 .tb {display: flex; align-items: center; gap: 0.7rem; white-space: nowrap; overflow: hidden;}
 .tb svg {width: 30px; height: 30px; flex: none;}
 .tb .brand {font-size: 0.95rem;}
-.mchip {font-size: 0.68rem; border: 1px solid #3A3F47; border-radius: 999px; padding: 1px 7px;}
+.mchip {font-size: 0.68rem; border: 1px solid #2A322C; border-radius: 999px; padding: 1px 7px;}
 .tb-total {font-family: MONO; font-weight: 800; font-size: 1.1rem; white-space: nowrap;}
 .pn .lb-row {padding: 0.3rem 0.45rem;} .pn .lb-val {font-size: 0.92rem;}
 .pn .big {font-size: 1.7rem;}
-.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; padding: 0.28rem 0; border-bottom: 1px solid #3A3F47;}
+.mini {display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.78rem; padding: 0.28rem 0; border-bottom: 1px solid #2A322C;}
 .mini:last-child {border-bottom: none;}
 .pn .mini .sub {display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;}
 .bcs {display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); gap: 0.45rem;}
-.bc {background: #0E0F12; border: 1px solid #3A3F47; border-radius: 10px; padding: 0.4rem 0.55rem;}
+.bc {background: #0D100E; border: 1px solid #2A322C; border-radius: 10px; padding: 0.4rem 0.55rem;}
 .bc .v {font-family: MONO; font-weight: 800; font-size: 1.02rem; margin-top: 2px;}
 .bc .word, .mini .word {font-size: 0.56rem; padding: 2px 6px;}
-.bc .lt {font-size: 0.7rem; color: #A7ADB6; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+.bc .lt {font-size: 0.7rem; color: #858D86; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
 .stRadio label, .stToggle label {font-size: 0.8rem;}
 .stButton button {min-height: 2rem; padding: 0 0.8rem;}
 [data-testid="stPlotlyChart"] {height: 35vh; padding: 4px 4px 0; margin: 0;}
 [data-testid="stElementContainer"]:has([data-testid="stPlotlyChart"]), [data-testid="stFullScreenFrame"]:has([data-testid="stPlotlyChart"]) {height: 35vh !important; min-height: 0 !important; flex: 0 0 35vh !important; overflow: hidden;}
 [data-testid="stPlotlyChart"] > div, [data-testid="stPlotlyChart"] .js-plotly-plot, [data-testid="stPlotlyChart"] .plot-container {height: 100% !important;}
-</style>""".replace("MONO", "'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace")
+</style>""".replace("MONO", "'Share Tech Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace")
 
 
 def pn(title, body, cls, right=""):
@@ -508,9 +540,9 @@ def render_desktop():
         for n, _ in table:
             fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n, hovertemplate="%{y:$,.0f}",
                                      line=dict(width=1.5, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid")))
-        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=10))
+        grid_line = dict(gridcolor="rgba(42,50,44,0.7)", zeroline=False, showline=False, tickfont=dict(size=10))
         fig.update_layout(autosize=True, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                          font=dict(color="#A7ADB6", size=10), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          font=dict(color="#858D86", size=10), hovermode="x unified", hoverlabel=dict(bgcolor="#111512", bordercolor="#2A322C"),
                           showlegend=False, xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))  # leaderboard colours are the legend
         centre.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "responsive": True})
         right.markdown(pn("Racers", '<div class="bcs">' + "".join(bot_mini(n, rdoc["accounts"][n], now_utc) for n, _ in table) + "</div>", "h-mid",
@@ -602,9 +634,9 @@ def render_race_tab():
             fig.add_trace(go.Scatter(x=xs, y=[h["v"].get(n) for h in hist], mode="lines", name=n,
                                      line=dict(width=1.6, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid"),
                                      hovertemplate="%{y:$,.0f}"))
-        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=11))
+        grid_line = dict(gridcolor="rgba(42,50,44,0.7)", zeroline=False, showline=False, tickfont=dict(size=11))
         fig.update_layout(height=250, margin=dict(l=6, r=6, t=6, b=6), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                          font=dict(color="#A7ADB6", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          font=dict(color="#858D86", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111512", bordercolor="#2A322C"),
                           showlegend=False, xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))  # leaderboard colours are the legend
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         st.markdown('<div class="label">Racers · tap a card for trades and diary</div><div class="grid">' + "".join(bot_card(n, rdoc["accounts"][n], champ, now_utc) for n, _ in table) + '</div>', unsafe_allow_html=True)
@@ -717,9 +749,9 @@ def render_backtest_tab():
             fig.add_trace(go.Scatter(x=xs, y=ch["series"].get(n), mode="lines", name=n,
                                      line=dict(width=1.6, color=RACER_COLOR.get(n), dash="dot" if n == race.BENCH else "solid"),
                                      hovertemplate="%{y:$,.0f}"))
-        grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=11))
+        grid_line = dict(gridcolor="rgba(42,50,44,0.7)", zeroline=False, showline=False, tickfont=dict(size=11))
         fig.update_layout(height=340, margin=dict(l=8, r=8, t=28, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                          font=dict(color="#A7ADB6", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
+                          font=dict(color="#858D86", size=11), hovermode="x unified", hoverlabel=dict(bgcolor="#111512", bordercolor="#2A322C"),
                           title=dict(text="Test period: account value", font=dict(size=12)),
                           legend=dict(orientation="h", y=-0.18, font=dict(size=11)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
