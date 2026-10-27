@@ -1,5 +1,7 @@
 """The five racing bots. Each one trades by its own rules, explains every trade in its own voice
 and keeps a short daily diary. Paper money only, real yfinance data only, shared safety rules from race.py."""
+from datetime import datetime, timedelta
+
 import pandas as pd
 
 from race import MEL, STRATEGIES, buy, p, sell
@@ -73,7 +75,7 @@ class Bot:
             sig = self.signal(mkt, t, now)
             if sig is not False:
                 seen += 1
-            if sig:
+            if sig and self.may_buy_ticker(rc, a, t, now):
                 found.append((t, sig))
         found.sort(key=lambda x: -x[1].get("rank", 0))
         a["saving"] = False
@@ -92,6 +94,9 @@ class Bot:
     def may_buy(self, a, now):
         return True
 
+    def may_buy_ticker(self, rc, a, t, now):
+        return True
+
     def exit_reason(self, pos, px, mkt):
         return None
 
@@ -104,6 +109,24 @@ class Bot:
 
 class Tyler(Bot):
     name, style = "Tyler", "The Momentum Hunter: buys breakouts on strong volume, quick in and out."
+    vol_need = 2.0                     # STOCKS: breakout bar needs over 2x normal volume
+    CRYPTO_VOL = 3.0                   # CRYPTO: only clearly strong volume (3x+), so far fewer fee-eating trades
+    CRYPTO_COOLDOWN = timedelta(hours=24)  # CRYPTO: wait a day after selling a coin before buying it again
+
+    def trade(self, rc, a, name, mkt, now, events):
+        self.vol_need = self.CRYPTO_VOL if rc.get("crypto") else 2.0
+        return super().trade(rc, a, name, mkt, now, events)
+
+    def may_buy_ticker(self, rc, a, t, now):
+        if not rc.get("crypto"):
+            return True
+        for tr in reversed(a.get("trades", [])):
+            if tr.get("ticker") == t and tr.get("side") == "SELL":
+                try:
+                    return now - datetime.fromisoformat(tr["time"]) >= self.CRYPTO_COOLDOWN
+                except (KeyError, TypeError, ValueError):
+                    return True
+        return True
 
     def signal(self, mkt, t, now):
         df = mkt.intraday(t)
@@ -118,7 +141,7 @@ class Tyler(Bot):
         last, prior = day.iloc[-1], day.iloc[:-1]
         level, avg_vol = float(prior["High"].max()), float(prior["Volume"].mean())
         px = float(last["Close"])
-        if avg_vol <= 0 or px <= level or float(last["Volume"]) / avg_vol <= 2:
+        if avg_vol <= 0 or px <= level or float(last["Volume"]) / avg_vol <= self.vol_need:
             return None
         stop = float(prior["Low"].tail(6).min())
         if stop >= px:
