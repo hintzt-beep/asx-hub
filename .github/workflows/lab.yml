@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "0 12 * * 6"     # Saturday night Melbourne (11pm AEDT / 10pm AEST)
   workflow_dispatch:
+  push:
+    branches: [strategy-lab]   # TEMP: first real run from the work branch
 concurrency:
   group: lab                 # its own lock: it only reads past prices and writes system/lab_results
   cancel-in-progress: false
