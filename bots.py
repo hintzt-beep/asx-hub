@@ -169,18 +169,33 @@ class Tyler(Bot):
 
 class Ryan(Bot):
     name, style = "Ryan", "The Bargain Hunter: buys sharp drops when RSI is under 30, waits days for the bounce."
+    wait_for_tick = False              # STOCKS: wait for the first up day instead of buying straight into the drop
+
+    def trade(self, rc, a, name, mkt, now, events):
+        self.wait_for_tick = not rc.get("crypto")
+        return super().trade(rc, a, name, mkt, now, events)
 
     def signal(self, mkt, t, now):
         v = daily_view(mkt, t)
         if v is None:
             return False
         drop = (v["px"] / float(v["close"].iloc[-6]) - 1) * 100
-        if v["rsi"] >= 30 or drop > -5:
+        if not self.wait_for_tick:
+            if v["rsi"] >= 30 or drop > -5:
+                return None
+            stop = v["px"] * 0.92
+            return {"px": v["px"], "stop": stop, "frac": 0.20, "rank": -v["rsi"],
+                    "reason": f"Oversold (RSI {v['rsi']:.0f}, under 30 means sold too hard): down {abs(drop):.1f}% in 5 days. "
+                              f"Mean reversion (betting a big drop bounces back) says buy. Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
+        prev = float(v["close"].iloc[-2])
+        low_rsi = min(v["rsi"], rsi(v["close"].iloc[:-1]))  # oversold at yesterday's close or now
+        if low_rsi >= 30 or drop > -5 or v["px"] <= prev:
             return None
         stop = v["px"] * 0.92
-        return {"px": v["px"], "stop": stop, "frac": 0.20, "rank": -v["rsi"],
-                "reason": f"Oversold (RSI {v['rsi']:.0f}, under 30 means sold too hard): down {abs(drop):.1f}% in 5 days. "
-                          f"Mean reversion (betting a big drop bounces back) says buy. Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
+        return {"px": v["px"], "stop": stop, "frac": 0.20, "rank": -low_rsi,
+                "reason": f"Oversold (RSI {low_rsi:.0f}, under 30 means sold too hard): down {abs(drop):.1f}% in 5 days, and it has stopped falling "
+                          f"and ticked up (${p(v['px'])} vs ${p(prev)} last close). Mean reversion (betting a big drop bounces back) says buy now the bounce has started. "
+                          f"Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
 
     def exit_reason(self, pos, px, mkt):
         v = daily_view(mkt, pos["ticker"])
