@@ -8,6 +8,7 @@ sys.modules["store"] = fake
 import race, bots
 T = bots.STRATEGIES["Tyler"]; T.crypto = True
 m = race.Market(); now = datetime.now(timezone.utc)
+print("now", now); raw = m.daily("BTC-AUD"); print(raw.tail(4)); print("index tz:", raw.index.tz)
 btc = T.closed_days(m, "BTC-AUD", now)
 print("BTC last closed bar:", btc.index[-1], "close", float(btc["Close"].iloc[-1]), "200d avg", float(btc["Close"].tail(200).mean()))
 for t in race.CRYPTO:
