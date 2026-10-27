@@ -13,7 +13,7 @@ def safe(tag, page, fn):
 
 def login(page):
     page.goto(URL); page.wait_for_timeout(6000)
-    page.get_by_label("Password").fill("ci-pass"); page.get_by_role("button", name="Log in").click()
+    page.get_by_label("Password", exact=True).fill("ci-pass"); page.get_by_role("button", name="Log in").click()
     page.wait_for_timeout(12000)
 
 def shot(page, name, full=True):
