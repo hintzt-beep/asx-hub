@@ -764,7 +764,44 @@ def render_backtest_tab():
     st.markdown('<div class="card">' + "".join(f'<div style="margin:4px 0">{s}</div>' for s in bt.get("summary", [])) + '</div>', unsafe_allow_html=True)
 
 
+LAB_VERDICT = {"promising": (GREEN, "Promising: more winners than luck explains"),
+               "weak": (AMBER, "Weak: about what luck alone would give"),
+               "none": (RED, "Nothing beat Buy and Hold")}
+
+
+def render_lab():
+    lab = load_system("lab_results", None)
+    st.markdown('<div class="label">Strategy Lab</div>', unsafe_allow_html=True)
+    if not lab or not lab.get("markets"):
+        st.markdown('<div class="card sub">No lab run yet. It tests thousands of rule combinations every Saturday night.</div>', unsafe_allow_html=True)
+        return
+    run = datetime.fromisoformat(lab["run"]).astimezone(MEL)
+    st.markdown(f'<div class="sub" style="margin-bottom:6px">Run {run.strftime("%a %d %b")} · real daily prices · ${lab.get("start_cash", 5000):,.0f} account · '
+                'fees and slippage in · paper only</div>', unsafe_allow_html=True)
+    for key, m in lab["markets"].items():
+        if m.get("error"):
+            st.markdown(f'<div class="card sub"><b>{key.upper()}</b>: {m["error"]}</div>', unsafe_allow_html=True)
+            continue
+        for mode, r in m["fees"].items():
+            c, bh = r["counts"], r["buy_and_hold"]
+            col, word = LAB_VERDICT.get(r.get("verdict"), (GREY, ""))
+            body = (line("Tested", f'{c["tested"]:,}') + line("Beat Buy and Hold in practice", f'{c["passed_practice"]:,}')
+                    + line("Survived unseen test + luck test", f'<b>{c["survived"]}</b> <span class="sub">(luck alone: about {c["expected_by_luck"]:g})</span>')
+                    + line("Buy and Hold in the test period", f'{bh["test"]:+.1f}%' if bh.get("test") is not None else "n/a"))
+            best = "".join(f'<div class="trade"><div class="row"><b>{s_["test"]["return_pct"]:+.1f}%</b>'
+                           f'<span class="sub">{s_["test"]["trades"]} trades · worst drop {s_["test"]["max_drop_pct"]:.0f}%</span></div>'
+                           f'<div class="sub">{s_["plain"]}</div></div>' for s_ in r.get("survivors", [])[:3])
+            st.markdown(f'<details class="card more"><summary><div class="row"><b>{m["name"]} · {r["fee_name"]}</b>'
+                        f'<span class="tap"></span></div><div style="color:{col}; margin-top:4px; font-weight:700">{word}</div></summary>'
+                        f'{body}{("<div class=label>Best survivors (test period)</div>" + best) if best else ""}</details>', unsafe_allow_html=True)
+
+
 with bt_tab:
+    try:
+        render_lab()
+    except Exception as e:
+        print("Lab section failed:", repr(e))
+        st.markdown('<div class="card sub">The Strategy Lab results couldn&#39;t load right now.</div>', unsafe_allow_html=True)
     try:
         render_backtest_tab()
     except Exception as e:
