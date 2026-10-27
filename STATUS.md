@@ -55,6 +55,8 @@
 
 - Ryan, STOCKS race (27 Oct evening, Coach suggestion approved): oversold level tightened from RSI 30 to 25 (still needs a 5%+ drop in 5 days and an up-tick), and he skips a buy when the CommSec fee would be over 1% of his usual 20% position (shared limit stays 2%). With today's $400-a-week accounts that means Ryan saves up until his account is about $2,500. CRYPTO Ryan unchanged. Tests pass (deep oversold up-tick buys with the new reason; $1,200 account skipped on fee share; crypto unaffected); `alerter.py --once` and `coach.py` clean.
 
+- Coach's Picks, CRYPTO race (27 Oct evening, Coach suggestion approved): the weekly crypto candidates are now only coins whose last finished day closed above their 55-day high on 1.5x+ normal volume, and only while Bitcoin's last finished close is above its 200-day average (`coach.crypto_setups`, same rule constants as Tyler). Otherwise no crypto picks and the cash is saved, with a plain reason (Bitcoin below its 200-day / no breakout / no Bitcoin data). The AI is told the rule and suggested a ~5% stop; Python checks unchanged. The backtest's rule-based Coach estimate uses the same filter. STOCKS picks unchanged. Tests pass; `alerter.py --once`, `coach.py` and `coach.py picks` clean on the fake setup.
+
 ## Current task
 On hold (26 Oct, Ty's request). Gmail agent is safe to leave: nothing is scheduled, it only runs when started by hand from Actions > gmail. Note: Google app is in Testing mode, so the refresh token expires about 1 Nov; when resuming, re-run connect-gmail.bat and update GMAIL_REFRESH_TOKEN (or publish the app to Production first). Next when resumed: check the Agent/ labels, then schedule + daily summary, then spam moves (approval needed).
 

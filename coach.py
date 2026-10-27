@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 import ai
 import race
 from alerter import notify_ty
-from bots import STYLES, daily_view
+from bots import STYLES, Tyler, daily_view
 from store import get, put
 
 MEL = race.MEL
@@ -165,9 +165,38 @@ def run_report(now):
 
 
 # ---------- Weekly Coach's Picks ----------
+CRYPTO_SETUP = ("CRYPTO picks are limited to the one setup with Strategy Lab evidence: a coin whose last finished day closed above its "
+                "55-day high on 1.5x+ normal volume, only while Bitcoin is above its 200-day average. Only coins with that setup are listed. "
+                "A stop about 5% below the price matches the lab's rule.")
+
+
+def crypto_setups(mkt, now):
+    """(BTC above its 200-day?, set of coins with a 55-day-high breakout on 1.5x volume), on finished daily bars only."""
+    btc = Tyler.closed_days(mkt, Tyler.LAB_FILTER, now)
+    if btc is None or len(btc) < 200:
+        return None, set()  # no Bitcoin data: no picks rather than a guess
+    if float(btc["Close"].iloc[-1]) <= float(btc["Close"].tail(200).mean()):
+        return False, set()
+    hits = set()
+    for t in race.CRYPTO:
+        df = Tyler.closed_days(mkt, t, now)
+        if df is None or len(df) < Tyler.LAB_HIGH + 21:
+            continue
+        level = float(df["High"].iloc[-Tyler.LAB_HIGH - 1:-1].max())
+        avg_vol = float(df["Volume"].iloc[-21:-1].mean())
+        if avg_vol > 0 and float(df["Close"].iloc[-1]) > level and float(df["Volume"].iloc[-1]) / avg_vol >= Tyler.LAB_VOL:
+            hits.add(t)
+    return True, hits
+
+
 def candidates(rc, mkt):
     rows = {}
+    allowed = None
+    if rc["crypto"]:  # crypto: only the lab's breakout setup, and only while BTC is above its 200-day
+        _, allowed = crypto_setups(mkt, getattr(mkt, "now", None) or datetime.now(timezone.utc))
     for t in rc["tickers"]:
+        if allowed is not None and t not in allowed:
+            continue
         v = daily_view(mkt, t)
         if v is None:
             continue
@@ -257,13 +286,18 @@ def run_picks(now, scheduled=False):
         a = doc["accounts"][race.COACH]
         cand = candidates(rc, mkt)
         res = {"cash": round(a["cash"], 2), "picks": [], "dropped": [], "no_pick_reason": ""}
-        if not cand:
+        if rc["crypto"] and not cand:
+            btc_up, _ = crypto_setups(mkt, now)
+            res["no_pick_reason"] = ("No Bitcoin price data, so no crypto picks this week. Saving the cash." if btc_up is None else
+                                     "Bitcoin is below its 200-day average, so no crypto picks (the lab's setup only works in an uptrend). Saving the cash."
+                                     if not btc_up else "No coin closed at a 55-day high on strong volume this week, so no crypto picks. Saving the cash.")
+        elif not cand:
             res["no_pick_reason"] = "No real price data was available, so no picks."
         else:
             payload = {"race": rc["name"], "fees": RULES["fees"][rc["name"]], "coach_account": {
                 "cash": round(a["cash"], 2), "value": round(race.value(a), 2), "max_position": round(race.MAX_POS * race.value(a), 2),
                 "open_positions": [{"ticker": x["ticker"], "value": round(x["shares"] * x["mark"], 2)} for x in a["positions"]]},
-                "candidates": cand}
+                "candidates": cand, **({"setup_rule": CRYPTO_SETUP} if rc["crypto"] else {})}
             try:
                 data = ai.coach_json(PICKS_SYSTEM, payload, picks_schema(sorted(cand)))
             except Exception as e:
