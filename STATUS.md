@@ -48,6 +48,9 @@
 
 - Neo punk look (27 Oct, Ty chose acid green; `dashboard.py` CSS and `.streamlit/config.toml` only, no logic changes): near-black #080A09 with faint static scanlines, charcoal/gunmetal panels #111512/#1A201C, acid green #9BFF57 accent (leader row, BUY, active tab, primary buttons, focus ring), phosphor #39D353, losses/SELL #FF5252, steel lines #2A322C. Cut-corner panels and buttons (clip-path) with a short acid marker on each panel; Chakra Petch for text, Share Tech Mono for numbers; "//" before section labels; robot bear's eye now acid green. Only motion: market-open dots pulse gently, off when reduced motion is set. Racer colours unchanged. Checked with real Streamlit screenshots (phone and 1440x900 desktop).
 
+- Crypto race fee (27 Oct): CoinSpot Markets 0.1% per buy and sell (`race.COINSPOT_FEE = 0.001`), was Instant 1%; 0.1% slippage still applied. Coach rules text updated. Backtest still runs both fee settings.
+- Strategy Lab: shares now also tested with a Bitcoin filter (buy only while BTC-AUD is above its 200-day), alongside no filter and the VAS 200-day filter (STOCKS grid 12,312; CRYPTO 8,208).
+
 ## Current task
 On hold (26 Oct, Ty's request). Gmail agent is safe to leave: nothing is scheduled, it only runs when started by hand from Actions > gmail. Note: Google app is in Testing mode, so the refresh token expires about 1 Nov; when resuming, re-run connect-gmail.bat and update GMAIL_REFRESH_TOKEN (or publish the app to Production first). Next when resumed: check the Agent/ labels, then schedule + daily summary, then spam moves (approval needed).
 

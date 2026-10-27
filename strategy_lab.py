@@ -53,8 +53,9 @@ STOCKS = ["ALL.AX", "ANZ.AX", "BHP.AX", "BOE.AX", "CBA.AX", "COL.AX", "CSL.AX", 
           "RIO.AX", "STO.AX", "TCL.AX", "TLS.AX", "WBC.AX", "WDS.AX", "WES.AX", "WOW.AX", "WTC.AX", "XRO.AX"]
 CRYPTO = ["BTC-AUD", "ETH-AUD", "SOL-AUD", "XRP-AUD", "BNB-AUD", "ADA-AUD", "DOGE-AUD", "AVAX-AUD",
           "LINK-AUD", "DOT-AUD", "LTC-AUD", "BCH-AUD"]
-MARKETS = {"stocks": {"name": "STOCKS", "tickers": STOCKS, "bench": "VAS.AX", "fees": {"commsec": None}},
-           "crypto": {"name": "CRYPTO", "tickers": CRYPTO, "bench": "BTC-AUD", "fees": {"markets": 0.001, "instant": 0.01}}}
+MARKETS = {"stocks": {"name": "STOCKS", "tickers": STOCKS, "bench": "VAS.AX", "fees": {"commsec": None}, "filters": ("own", "btc")},
+           "crypto": {"name": "CRYPTO", "tickers": CRYPTO, "bench": "BTC-AUD", "fees": {"markets": 0.001, "instant": 0.01}, "filters": ("own",)}}
+FILTER_TICKER = {"btc": "BTC-AUD"}   # extra market filters: buy only while this is above its 200-day average
 FEE_NAMES = {"commsec": "CommSec", "markets": "CoinSpot Markets 0.1%", "instant": "CoinSpot Instant 1%"}
 
 
@@ -67,7 +68,7 @@ def fee_of(mode, amount):
 
 
 # ---------- Strategy grid ----------
-def entry_grid():
+def entry_grid(filters=("own",)):
     out = []
     for n, vol in itertools.product((10, 20, 55), (0, 1.5, 2, 3)):
         out.append(("breakout", {"n": n, "vol": vol}))
@@ -79,7 +80,7 @@ def entry_grid():
         out.append(("cross", {"vol": vol, "band": band}))
     for drop, tick in itertools.product((5, 10, 15), (False, True)):
         out.append(("dip", {"drop": drop, "tick": tick}))
-    return [(fam, p, regime) for fam, p in out for regime in (False, True)]
+    return [(fam, p, regime) for fam, p in out for regime in ("",) + tuple(filters)]
 
 
 EXITS = [{"stop": s, "target": t, "trail": tr, "hold": h}
@@ -93,7 +94,9 @@ def describe(fam, p, regime, ex):
          "cross": lambda: "Buy a fresh golden cross (20-day over the 50-day)" + (" with rising volume" if p["vol"] else "") + (" and RSI 50-70" if p["band"] else ""),
          "dip": lambda: f"Buy after a {p['drop']}%+ drop in 10 days" + (" once the price ticks up" if p["tick"] else ""),
          "random": lambda: "Buy on random days (luck test)"}[fam]()
-    if regime:
+    if regime == "btc":
+        e += ", only when Bitcoin is above its 200-day average"
+    elif regime:
         e += ", only when the market is above its 200-day average"
     x = [f"stop {ex['stop'] * 100:g}%"]
     if ex["target"]:
@@ -112,7 +115,7 @@ def rsi(c, n=14):
     return 100 - 100 / (1 + up / dn.replace(0, np.nan))
 
 
-def features(df, regime):
+def features(df, regimes):
     c, h, v = df["Close"], df["High"], df["Volume"]
     f = {"rsi": rsi(c).fillna(50).values, "up": (c > c.shift(1)).values, "c": c.values}
     for n in (10, 20, 55):
@@ -124,7 +127,8 @@ def features(df, regime):
     f["s20_3"], f["s50_3"] = c.rolling(20).mean().shift(3).values, c.rolling(50).mean().shift(3).values
     f["vol5"], f["vol20"] = v.rolling(5).mean().values, v.rolling(20).mean().values
     f["ret10"] = (c / c.shift(10) - 1).values
-    f["regime"] = regime.reindex(df.index).ffill().fillna(False).astype(bool).values
+    for name, reg in regimes.items():  # market filters, lined up to this share's trading days
+        f["reg_" + name] = reg.reindex(df.index, method="ffill").fillna(False).astype(bool).values
     return f
 
 
@@ -157,7 +161,7 @@ def signal(f, fam, p, regime):
         else:
             raise ValueError(fam)
         if regime:
-            s = s & f["regime"]
+            s = s & f["reg_" + regime]
     s = np.nan_to_num(s.astype(float)).astype(bool)
     s[:200] = False  # warm-up: every indicator needs history
     return s
@@ -338,14 +342,19 @@ def run_market(key, prices, workers, limit=None):
     bench = prices.get(m["bench"])
     if bench is None:
         return {"error": f"No price data for {m['bench']}."}
-    regime = bench["Close"] > bench["Close"].rolling(200).mean()
+    regimes = {"own": bench["Close"] > bench["Close"].rolling(200).mean()}
+    for name in m.get("filters", ()):
+        if name in FILTER_TICKER:
+            fx = prices.get(FILTER_TICKER[name])
+            if fx is not None:
+                regimes[name] = fx["Close"] > fx["Close"].rolling(200).mean()
     data = {}
     for t in m["tickers"]:
         df = prices.get(t)
         if df is None or len(df) < 260:
             continue
         data[t] = {"O": df["Open"].values, "H": df["High"].values, "L": df["Low"].values, "C": df["Close"].values,
-                   "idx": df.index.values.astype("datetime64[D]").astype(np.int64), "F": features(df, regime)}
+                   "idx": df.index.values.astype("datetime64[D]").astype(np.int64), "F": features(df, regimes)}
     if not data:
         return {"error": "No usable price data."}
     days = np.unique(np.concatenate([d["idx"] for d in data.values()]))
@@ -354,7 +363,7 @@ def run_market(key, prices, workers, limit=None):
     split = int(days[int(len(days) * PRACTICE)])
     mid = int(days[int(len(days) * (PRACTICE + (1 - PRACTICE) / 2))])
     jobs, meta = [], {}
-    grid = [(fam, p, rg, ex) for (fam, p, rg) in entry_grid() for ex in EXITS]
+    grid = [(fam, p, rg, ex) for (fam, p, rg) in entry_grid(tuple(f_ for f_ in m.get("filters", ("own",)) if f_ in regimes)) for ex in EXITS]
     if limit:
         grid = grid[::max(1, len(grid) // limit)]
     for sid, (fam, p, rg, ex) in enumerate(grid):
@@ -506,7 +515,8 @@ def main():
            "rules": {"practice_share": PRACTICE, "min_trades_practice": MIN_TRADES_PRACTICE, "min_trades_test": MIN_TRADES_TEST,
                      "max_drop_pct": MAX_DD, "luck_percentile": LUCK_PCTL}, "markets": {}}
     for key, m in MARKETS.items():
-        prices = load_synthetic(m["tickers"], m["bench"]) if a.synthetic else load_real(m["tickers"], m["bench"])
+        extra = [FILTER_TICKER[f_] for f_ in m.get("filters", ()) if f_ in FILTER_TICKER and FILTER_TICKER[f_] != m["bench"]]
+        prices = load_synthetic(m["tickers"] + extra, m["bench"]) if a.synthetic else load_real(m["tickers"] + extra, m["bench"])
         print(f"{m['name']}: {len(prices)} price series loaded")
         res["markets"][key] = run_market(key, prices, a.workers, a.limit)
         print(f"{m['name']}: done in {res['markets'][key].get('seconds', 0)}s")

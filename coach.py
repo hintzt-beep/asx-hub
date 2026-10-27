@@ -20,7 +20,7 @@ MEL = race.MEL
 COACHED = race.BOTS + [race.COACH]
 
 RULES = {"bots": STYLES, "fees": {"STOCKS": "CommSec: $5 per trade up to $1,000, $10 to $3,000, $19.95 to $10,000, plus 0.1% slippage",
-                                  "CRYPTO": "CoinSpot: 1% on every buy and sell, plus 0.1% slippage, prices in AUD"},
+                                  "CRYPTO": "CoinSpot Markets: 0.1% on every buy and sell, plus 0.1% slippage, prices in AUD"},
          "shared": "stop loss on every position, max 25% of an account in one position, no buy if fees are over 2% of the trade, "
                    "one buy per ticker per day, loss brake at 15% below the peak, $400 deposit every Monday, ranked by time-weighted return"}
 

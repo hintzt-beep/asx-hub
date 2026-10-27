@@ -25,7 +25,7 @@ from store import get, put
 SYD = ZoneInfo("Australia/Sydney")
 MEL = race.MEL
 PRACTICE = 0.70                    # first 70% of the timeline is "practice", the last 30% is "test"
-CRYPTO_FEES = {"instant": 0.01, "markets": 0.001}   # CoinSpot Instant 1% (live) and CoinSpot Markets 0.1%
+CRYPTO_FEES = {"instant": 0.01, "markets": 0.001}   # CoinSpot Instant 1% and CoinSpot Markets 0.1% (live)
 OVERFIT = "probably luck (overfit)"
 
 

@@ -18,7 +18,7 @@ VERSION = 2
 DEPOSIT = 400.0                    # every racer, every Monday 9am Melbourne
 SCORECARD_DAYS = 21                # Hall of Fame scorecard every 3 weeks
 SLIP = 0.001                       # 0.1% against us on every fill
-COINSPOT_FEE = 0.01                # CoinSpot instant buy/sell: 1% of the trade
+COINSPOT_FEE = 0.001               # CoinSpot Markets (order book): 0.1% of the trade (Instant would be 1%)
 MAX_STOCK_TRADE = 10000.0          # CommSec tiers we were given stop at $10,000
 MAX_FEE_PCT = 0.02                 # never trade if fees are more than 2% of the trade
 MAX_POS = 0.25                     # max 25% of a racer's account in one position
@@ -205,7 +205,7 @@ def update_index(a):
 
 
 def fee(rc, amount):
-    """CoinSpot: 1% of the trade. CommSec: $5 to $1,000, $10 to $3,000, $19.95 to $10,000 (None above that)."""
+    """CoinSpot Markets: 0.1% of the trade. CommSec: $5 to $1,000, $10 to $3,000, $19.95 to $10,000 (None above that)."""
     if rc["crypto"]:
         return amount * COINSPOT_FEE
     if amount <= 1000:
