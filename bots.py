@@ -120,14 +120,20 @@ class Bot:
 
 class Tyler(Bot):
     name, style = "Tyler", ("The Momentum Hunter: buys breakouts on strong volume. Shares: quick intraday breakouts. "
-                            "Crypto: the Strategy Lab's best survivor (55-day high on 2x volume, only while Bitcoin is above its 200-day).")
+                            "Crypto: the Strategy Lab's best survivor (55-day high on 1.5x volume, only while Bitcoin is above its 200-day).")
     crypto = False
-    # CRYPTO rules, from the Strategy Lab run of 27 Oct 2026 (best survivor at CoinSpot Instant 1%):
-    LAB_HIGH, LAB_VOL, LAB_STOP, LAB_DAYS, LAB_FILTER = 55, 2.0, 0.12, 10, "BTC-AUD"
+    # CRYPTO rules, from the Strategy Lab run of 27 Oct 2026 (best survivor at CoinSpot Markets 0.1%, the live fee):
+    LAB_HIGH, LAB_VOL, LAB_STOP, LAB_DAYS, LAB_FILTER = 55, 1.5, 0.05, 40, "BTC-AUD"
 
     def trade(self, rc, a, name, mkt, now, events):
-        self.crypto = bool(rc.get("crypto"))
-        return super().trade(rc, a, name, mkt, now, events)
+        self.crypto, self.acct = bool(rc.get("crypto")), a
+        out = super().trade(rc, a, name, mkt, now, events)
+        if self.crypto:  # remember which daily breakout each buy came from, so one breakout is only ever bought once
+            used = a.setdefault("lab_bars", {})
+            for pos in a["positions"]:
+                if pos.get("bar"):
+                    used[pos["ticker"]] = pos["bar"]
+        return out
 
     def signal(self, mkt, t, now):
         return self.lab_signal(mkt, t, now) if self.crypto else self.intraday_signal(mkt, t, now)
@@ -155,13 +161,16 @@ class Tyler(Bot):
         avg_vol = float(df["Volume"].iloc[-21:-1].mean())
         if avg_vol <= 0 or float(last["Close"]) <= level or float(last["Volume"]) / avg_vol < self.LAB_VOL:
             return None
+        bar = str(pd.Timestamp(df.index[-1]).date())
+        if (getattr(self, "acct", None) or {}).get("lab_bars", {}).get(t) == bar:
+            return None  # already bought this exact breakout (e.g. stopped out the same day): wait for a new one
         px = mkt.price(t)
         if not px:
             return None
         ratio, stop = float(last["Volume"]) / avg_vol, px * (1 - self.LAB_STOP)
-        return {"px": px, "stop": stop, "rank": ratio, "extra": {"lab": True},
+        return {"px": px, "stop": stop, "rank": ratio, "extra": {"lab": True, "bar": bar},
                 "reason": f"Lab breakout (Strategy Lab's best crypto rule): closed at ${p(float(last['Close']))}, above its {self.LAB_HIGH}-day high of "
-                          f"${p(level)}, on {ratio:.1f}x normal volume, and Bitcoin is above its 200-day average. Stop ${p(stop)} (12% down), "
+                          f"${p(level)}, on {ratio:.1f}x normal volume, and Bitcoin is above its 200-day average. Stop ${p(stop)} (5% down), "
                           f"I sell after {self.LAB_DAYS} days if it isn't stopped out first."}
 
     def intraday_signal(self, mkt, t, now):
@@ -200,7 +209,7 @@ class Tyler(Bot):
 
     def stop_reason(self, pos, px):
         if pos.get("lab"):
-            return f"Stop loss (12% below where I bought) hit at ${p(px)}. The breakout failed, on to the next."
+            return f"Stop loss (5% below where I bought) hit at ${p(px)}. The breakout failed, on to the next."
         return f"Stop loss (my safety exit just under the breakout) hit at ${p(px)}. The breakout failed, on to the next."
 
     def target_reason(self, pos, px):
@@ -208,8 +217,8 @@ class Tyler(Bot):
 
     def diary(self, a, seen, found):
         if self.crypto:
-            return (f"Checked {seen} coins with the Strategy Lab rule and {found} closed at a 55-day high on 2x volume with Bitcoin above its 200-day. "
-                    f"{holding_words(a)}. Few trades by design: each one is held up to 10 days with a 12% stop.")
+            return (f"Checked {seen} coins with the Strategy Lab rule and {found} closed at a 55-day high on 1.5x volume with Bitcoin above its 200-day. "
+                    f"{holding_words(a)}. Few trades by design: each one is held up to 40 days with a 5% stop.")
         return (f"Scanned {seen} names for breakouts and {found} {are(found)} pushing through today's high on heavy volume. {holding_words(a)}. "
                 "Momentum (buying what's already moving fast) only pays if I'm quick, so I'll keep hunting.")
 

@@ -51,6 +51,8 @@
 - Crypto race fee (27 Oct): CoinSpot Markets 0.1% per buy and sell (`race.COINSPOT_FEE = 0.001`), was Instant 1%; 0.1% slippage still applied. Coach rules text updated. Backtest still runs both fee settings.
 - Strategy Lab: shares now also tested with a Bitcoin filter (buy only while BTC-AUD is above its 200-day), alongside no filter and the VAS 200-day filter (STOCKS grid 12,312; CRYPTO 8,208).
 
+- Tyler, CRYPTO race (27 Oct evening, Coach suggestion approved): now the Strategy Lab's best survivor at CoinSpot Markets 0.1% (the live fee): 55-day-high close on 1.5x+ volume, BTC above its 200-day, stop 5%, sells after 40 days. Each daily breakout is bought at most once (`lab_bars` per account), so a stop-out never leads to re-buying the same signal. Tests: 1.4x no buy, 1.5x buys, stop 5%, 40-day exit (not at 30), same breakout not re-bought; `alerter.py --once` and `coach.py` clean on the fake setup.
+
 ## Current task
 On hold (26 Oct, Ty's request). Gmail agent is safe to leave: nothing is scheduled, it only runs when started by hand from Actions > gmail. Note: Google app is in Testing mode, so the refresh token expires about 1 Nov; when resuming, re-run connect-gmail.bat and update GMAIL_REFRESH_TOKEN (or publish the app to Production first). Next when resumed: check the Agent/ labels, then schedule + daily summary, then spam moves (approval needed).
 
