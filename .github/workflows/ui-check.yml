@@ -1,0 +1,24 @@
+name: ui-check
+on:
+  push:
+    branches: [ui-check]
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt playwright && python -m playwright install --with-deps chromium
+      - run: python ci/seed.py "$PWD"
+        env: {FAKE_DB: /tmp/fake_db.json}
+      - run: |
+          REPO_DIR="$PWD" FAKE_DB=/tmp/fake_db.json TY_PASSWORD=ci-pass streamlit run ci/run_app.py --server.headless true > app.log 2>&1 &
+          sleep 15
+          python ci/shoot.py
+          echo "--- app log ---"; tail -60 app.log
+        env: {FAKE_DB: /tmp/fake_db.json}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: shots, path: shots/}
