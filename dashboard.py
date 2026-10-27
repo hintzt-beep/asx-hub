@@ -92,6 +92,9 @@ details.more > summary::-webkit-details-marker {display: none;}
 details.more > summary .tap {color: #A7ADB6; font-size: 0.7rem;}
 details.more > summary .tap::after {content: "▾ details";}
 details.more[open] > summary .tap::after {content: "▴ less";}
+.st-key-topbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap; gap: 8px;}
+.st-key-topbar [data-testid="stColumn"] {min-width: 0 !important; width: auto !important;}
+.st-key-topbar [data-testid="stColumn"]:last-child {flex: 0 0 auto !important;}
 .card b {font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;}
 </style>
 """, unsafe_allow_html=True)
@@ -286,7 +289,7 @@ def settings_menu(where):
 
 
 if not desktop:  # phone view: tabs
-    top_l, top_r = st.columns([3, 1.2], vertical_alignment="center")
+    top_l, top_r = st.container(key="topbar").columns([3, 1.2], vertical_alignment="center")
     top_l.markdown(f'<div class="row" style="justify-content:flex-start; gap:10px">{BEAR_SVG}<div><div class="brand">{APP_NAME}</div>'
                    f'<div class="sub">{now.strftime("%a %d %b, %H:%M")}</div></div></div>', unsafe_allow_html=True)
     settings_menu(top_r)
@@ -508,7 +511,7 @@ def render_desktop():
         grid_line = dict(gridcolor="rgba(58,63,71,0.45)", zeroline=False, showline=False, tickfont=dict(size=10))
         fig.update_layout(autosize=True, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                           font=dict(color="#A7ADB6", size=10), hovermode="x unified", hoverlabel=dict(bgcolor="#111216", bordercolor="#3A3F47"),
-                          legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0, font=dict(size=10)), xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))
+                          showlegend=False, xaxis=grid_line, yaxis=dict(tickprefix="$", **grid_line))  # leaderboard colours are the legend
         centre.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "responsive": True})
         right.markdown(pn("Racers", '<div class="bcs">' + "".join(bot_mini(n, rdoc["accounts"][n], now_utc) for n, _ in table) + "</div>", "h-mid",
                           "mood · value · last trade"), unsafe_allow_html=True)
