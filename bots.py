@@ -61,6 +61,17 @@ def today(now):
     return now.astimezone(MEL).date().isoformat()
 
 
+def sold_within(a, t, now, gap):
+    """True when this account sold ticker t less than `gap` ago (used for re-buy cooldowns)."""
+    for tr in reversed(a.get("trades", [])):
+        if tr.get("ticker") == t and tr.get("side") == "SELL":
+            try:
+                return now - datetime.fromisoformat(tr["time"]) < gap
+            except (KeyError, TypeError, ValueError):
+                return False
+    return False
+
+
 class Bot:
     name = style = ""
 
@@ -120,13 +131,7 @@ class Tyler(Bot):
     def may_buy_ticker(self, rc, a, t, now):
         if not rc.get("crypto"):
             return True
-        for tr in reversed(a.get("trades", [])):
-            if tr.get("ticker") == t and tr.get("side") == "SELL":
-                try:
-                    return now - datetime.fromisoformat(tr["time"]) >= self.CRYPTO_COOLDOWN
-                except (KeyError, TypeError, ValueError):
-                    return True
-        return True
+        return not sold_within(a, t, now, self.CRYPTO_COOLDOWN)
 
     def signal(self, mkt, t, now):
         df = mkt.intraday(t)
@@ -213,6 +218,16 @@ class Ryan(Bot):
 
 class Nathan(Bot):
     name, style = "Nathan", "The Steady Hand: small bets on strong long-term uptrends, trailing stop, holds for weeks."
+    trail = 0.08
+    STOCK_TRAIL = 0.12                 # STOCKS: 12% room so normal dips don't shake him out
+    STOCK_COOLDOWN = timedelta(days=14)  # STOCKS: no re-buy of a share for 2 weeks after selling it
+
+    def trade(self, rc, a, name, mkt, now, events):
+        self.trail = 0.08 if rc.get("crypto") else self.STOCK_TRAIL
+        return super().trade(rc, a, name, mkt, now, events)
+
+    def may_buy_ticker(self, rc, a, t, now):
+        return rc.get("crypto") or not sold_within(a, t, now, self.STOCK_COOLDOWN)
 
     def signal(self, mkt, t, now):
         v = daily_view(mkt, t, need=200)
@@ -221,8 +236,8 @@ class Nathan(Bot):
         rising = v["sma50"] > float(v["s50"].iloc[-11])
         if not (v["px"] > v["sma50"] > v["sma200"] and rising):
             return None
-        stop = v["px"] * 0.92
-        return {"px": v["px"], "stop": stop, "frac": 0.10, "trail": 0.08, "rank": v["px"] / v["sma200"],
+        stop = v["px"] * (1 - self.trail)
+        return {"px": v["px"], "stop": stop, "frac": 0.10, "trail": self.trail, "rank": v["px"] / v["sma200"],
                 "reason": f"Trend following (riding a steady climb): ${p(v['px'])} is above the 50-day (${p(v['sma50'])}) and 200-day "
                           f"(${p(v['sma200'])}) averages and the 50-day is rising. Small position, trailing stop (rises with the price) from ${p(stop)}."}
 
