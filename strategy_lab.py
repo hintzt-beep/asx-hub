@@ -281,10 +281,10 @@ def run_one(job):
             # seed > 0: a copy of one strategy; seed < 0: a whole-lab rerun (same shift for every strategy on this share)
             rng = np.random.default_rng((seed * 100003 + zlib.crc32(t.encode()) % 100003 + sid * 7) if seed > 0
                                         else (-seed * 7919 + zlib.crc32(t.encode()) % 100003 + 13))
-            n = len(sig)
-            if n > 400:
-                sig = np.roll(sig, int(rng.integers(100, n - 100)))
-                sig[:200] = False
+            n = len(sig) - 200  # shift only inside the usable part, so no signals are lost to the warm-up
+            if n > 200:
+                sig = sig.copy()
+                sig[200:] = np.roll(sig[200:], int(rng.integers(50, n - 50)))
         idx = d["idx"]
         all_tr += [(idx[a], idx[b], pa, pb) for a, b, pa, pb in trades_for(d, sig, ex)]
     res = {}
