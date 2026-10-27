@@ -501,6 +501,8 @@ def summary(res):
                     f"{c['survived']} of the top {c['finalists']} also won on unseen data, in both halves, and beat the luck test (luck alone would give about {c['expected_by_luck']:g}).")
             if bh["test"] is not None:
                 head += f" Buy and Hold made {bh['test']:+.1f}% in the test period."
+            if c.get("no_skill_bar") is not None:
+                head += f" Winners {c['beat_buy_and_hold_in_test']} vs no-skill reruns {c['no_skill_reruns']}."
             lines.append(head)
             lines.append("  " + VERDICT[r["verdict"]])
             if r["survivors"]:
