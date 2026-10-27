@@ -1,6 +1,6 @@
 """The five racing bots. Each one trades by its own rules, explains every trade in its own voice
 and keeps a short daily diary. Paper money only, real yfinance data only, shared safety rules from race.py."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -119,21 +119,52 @@ class Bot:
 
 
 class Tyler(Bot):
-    name, style = "Tyler", "The Momentum Hunter: buys breakouts on strong volume, quick in and out."
-    vol_need = 2.0                     # STOCKS: breakout bar needs over 2x normal volume
-    CRYPTO_VOL = 3.0                   # CRYPTO: only clearly strong volume (3x+), so far fewer fee-eating trades
-    CRYPTO_COOLDOWN = timedelta(hours=24)  # CRYPTO: wait a day after selling a coin before buying it again
+    name, style = "Tyler", ("The Momentum Hunter: buys breakouts on strong volume. Shares: quick intraday breakouts. "
+                            "Crypto: the Strategy Lab's best survivor (55-day high on 2x volume, only while Bitcoin is above its 200-day).")
+    crypto = False
+    # CRYPTO rules, from the Strategy Lab run of 27 Oct 2026 (best survivor at CoinSpot Instant 1%):
+    LAB_HIGH, LAB_VOL, LAB_STOP, LAB_DAYS, LAB_FILTER = 55, 2.0, 0.12, 10, "BTC-AUD"
 
     def trade(self, rc, a, name, mkt, now, events):
-        self.vol_need = self.CRYPTO_VOL if rc.get("crypto") else 2.0
+        self.crypto = bool(rc.get("crypto"))
         return super().trade(rc, a, name, mkt, now, events)
 
-    def may_buy_ticker(self, rc, a, t, now):
-        if not rc.get("crypto"):
-            return True
-        return not sold_within(a, t, now, self.CRYPTO_COOLDOWN)
-
     def signal(self, mkt, t, now):
+        return self.lab_signal(mkt, t, now) if self.crypto else self.intraday_signal(mkt, t, now)
+
+    @staticmethod
+    def closed_days(mkt, t, now):
+        """Daily bars up to yesterday: today's bar is still forming, and the lab only acts on finished days."""
+        df = mkt.daily(t)
+        if df is None or not len(df):
+            return None
+        last = pd.Timestamp(df.index[-1])
+        today = pd.Timestamp(now).tz_convert("UTC").date() if pd.Timestamp(now).tzinfo else pd.Timestamp(now).date()
+        return df.iloc[:-1] if last.date() >= today else df
+
+    def lab_signal(self, mkt, t, now):
+        df = self.closed_days(mkt, t, now)
+        btc = self.closed_days(mkt, self.LAB_FILTER, now)
+        if df is None or len(df) < self.LAB_HIGH + 21 or btc is None or len(btc) < 200:
+            return False
+        btc_px, btc_avg = float(btc["Close"].iloc[-1]), float(btc["Close"].tail(200).mean())
+        if btc_px <= btc_avg:
+            return None  # market filter: Bitcoin below its 200-day average, so stay in cash
+        last = df.iloc[-1]
+        level = float(df["High"].iloc[-self.LAB_HIGH - 1:-1].max())
+        avg_vol = float(df["Volume"].iloc[-21:-1].mean())
+        if avg_vol <= 0 or float(last["Close"]) <= level or float(last["Volume"]) / avg_vol < self.LAB_VOL:
+            return None
+        px = mkt.price(t)
+        if not px:
+            return None
+        ratio, stop = float(last["Volume"]) / avg_vol, px * (1 - self.LAB_STOP)
+        return {"px": px, "stop": stop, "rank": ratio, "extra": {"lab": True},
+                "reason": f"Lab breakout (Strategy Lab's best crypto rule): closed at ${p(float(last['Close']))}, above its {self.LAB_HIGH}-day high of "
+                          f"${p(level)}, on {ratio:.1f}x normal volume, and Bitcoin is above its 200-day average. Stop ${p(stop)} (12% down), "
+                          f"I sell after {self.LAB_DAYS} days if it isn't stopped out first."}
+
+    def intraday_signal(self, mkt, t, now):
         df = mkt.intraday(t)
         if df is None or len(df) < 12:
             return False
@@ -146,7 +177,7 @@ class Tyler(Bot):
         last, prior = day.iloc[-1], day.iloc[:-1]
         level, avg_vol = float(prior["High"].max()), float(prior["Volume"].mean())
         px = float(last["Close"])
-        if avg_vol <= 0 or px <= level or float(last["Volume"]) / avg_vol <= self.vol_need:
+        if avg_vol <= 0 or px <= level or float(last["Volume"]) / avg_vol <= 2:
             return None
         stop = float(prior["Low"].tail(6).min())
         if stop >= px:
@@ -157,17 +188,28 @@ class Tyler(Bot):
                           f"on {ratio:.1f}x normal volume. Tight stop ${p(stop)}, target ${p(target)} (2x the risk)."}
 
     def exit_reason(self, pos, px, mkt):
+        if self.crypto:
+            now = getattr(mkt, "now", None) or datetime.now(timezone.utc)
+            held = now - datetime.fromisoformat(pos["opened"])
+            if held >= timedelta(days=self.LAB_DAYS):
+                return f"Time's up: held {held.days} days, the lab rule sells after {self.LAB_DAYS}. Selling at ${p(px)}."
+            return None
         if pos.get("level") and px < pos["level"]:
             return f"Momentum fading (the move stalled): back under the ${p(pos['level'])} breakout level, so I'm out."
         return None
 
     def stop_reason(self, pos, px):
+        if pos.get("lab"):
+            return f"Stop loss (12% below where I bought) hit at ${p(px)}. The breakout failed, on to the next."
         return f"Stop loss (my safety exit just under the breakout) hit at ${p(px)}. The breakout failed, on to the next."
 
     def target_reason(self, pos, px):
         return f"Profit target hit at ${p(px)} (2x the risk I took). Banked it."
 
     def diary(self, a, seen, found):
+        if self.crypto:
+            return (f"Checked {seen} coins with the Strategy Lab rule and {found} closed at a 55-day high on 2x volume with Bitcoin above its 200-day. "
+                    f"{holding_words(a)}. Few trades by design: each one is held up to 10 days with a 12% stop.")
         return (f"Scanned {seen} names for breakouts and {found} {are(found)} pushing through today's high on heavy volume. {holding_words(a)}. "
                 "Momentum (buying what's already moving fast) only pays if I'm quick, so I'll keep hunting.")
 

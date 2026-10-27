@@ -14,6 +14,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -q -r requirements.txt playwright && python -m playwright install --with-deps chromium > /dev/null
+      - run: python ci/live_tyler.py > live_tyler.log 2>&1 || true
       - run: python ci/seed.py "$PWD" > seed.log 2>&1 || true
         env: {FAKE_DB: /tmp/fake_db.json}
       - run: |
@@ -22,6 +23,6 @@ jobs:
           python ci/shoot.py > shoot.log 2>&1 || true
       - if: always()
         run: |
-          mkdir -p ci/out && cp -r shots/. ci/out/ 2>/dev/null; cp seed.log app.log shoot.log ci/out/ 2>/dev/null
+          mkdir -p ci/out && cp -r shots/. ci/out/ 2>/dev/null; cp seed.log app.log shoot.log live_tyler.log ci/out/ 2>/dev/null
           git config user.name ci && git config user.email ci@example.com
           git add ci/out && git commit -qm "ci screenshots" && git push
