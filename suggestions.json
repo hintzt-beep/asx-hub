@@ -1,0 +1,193 @@
+[
+ {
+  "id": "88dde488",
+  "time": "2026-10-25T07:10:32.409870+00:00",
+  "summary": "There is far too little data to judge any bot. In both the stocks and crypto races, no bot has a single closed trade (a buy that has been sold again), so the evidence is thin (the rule of thumb is at least 20 closed trades). There is no backtest (a replay over past prices) to lean on either. I am suggesting no rule changes yet.",
+  "suggestions": []
+ },
+ {
+  "id": "86992974",
+  "time": "2026-10-26T07:22:19.366859+00:00",
+  "summary": "The live race is too young to judge: every bot in both races has 0 closed trades (finished buy-and-sell rounds), well under the 20 needed for solid evidence. The only live movement is Buy and Hold, up 0.22% time-weighted return (the return that ignores the timing of deposits) in stocks and down 1.77% in crypto. The bots are all in cash, so they trail by 0.22% in stocks and lead by 1.77% in crypto. The backtest (replay over past prices) adds some evidence. On unseen test data no bot beat Buy and Hold in either race. Tyler in crypto and Ryan and Nathan in stocks look like the weakest. Treat these suggestions as tentative.",
+  "suggestions": [
+   {
+    "id": "4360582e",
+    "bot": "Tyler",
+    "race": "crypto",
+    "change": "Add a cooldown (a waiting period) after each sell before Tyler can buy the same coin again, and only buy breakouts when volume is clearly strong, so he makes far fewer trades.",
+    "why": "The backtest shows -82.61% on Instant over 642 trades and -41.33% on Markets over 1004 trades, which points to fees and slippage (the gap between expected and actual price) eating the returns. Fewer trades should cut that cost. Live data has no closed trades yet, so confidence is only medium.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   },
+   {
+    "id": "6a41023d",
+    "bot": "Ryan",
+    "race": "stocks",
+    "change": "Buy only after RSI (a 0-100 gauge of how oversold a share is) is under 30 AND the price has stopped falling and ticked up, instead of buying straight into the drop.",
+    "why": "Ryan lost 14.63% in the test period over 101 trades and 23.32% in practice, which suggests he buys falls that keep falling. Waiting for a first sign of a bounce may cut losing trades. This rests on backtest evidence only.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   },
+   {
+    "id": "9cc2cf50",
+    "bot": "Nathan",
+    "race": "stocks",
+    "change": "Give the trailing stop (a sell level that follows the price up) more room, and skip re-buying a ticker soon after being stopped out.",
+    "why": "Nathan is meant to hold for weeks, yet he made 136 trades in the test period and returned -8.48%. That looks like being shaken out and re-entering repeatedly, which costs fees each time. Backtest evidence only.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   }
+  ]
+ },
+ {
+  "id": "c41faf1b",
+  "time": "2026-10-27T07:17:19.137471+00:00",
+  "summary": "Live evidence is far too thin to judge any bot: no racer has a single closed trade in either race, and the bots are all still sitting in cash. In crypto, cash is ahead of Buy and Hold only because Buy and Hold is down (-2.18% time-weighted return, the growth rate ignoring deposit timing). In stocks the bots trail Buy and Hold by 0.69 points because it is up. The backtest (a replay over past prices) is the only real evidence. It says no bot beat Buy and Hold on unseen test data in either race. The Strategy Lab found nothing in stocks that beat Buy and Hold, but found many crypto breakout rules that did. The suggestions below rest on the backtest, not on live results, so treat them as low-confidence experiments.",
+  "suggestions": [
+   {
+    "id": "1f39f9cc",
+    "bot": "Tyler",
+    "race": "crypto",
+    "change": "Change Tyler's crypto rule to match the Strategy Lab's best CoinSpot Markets survivor: 55-day high breakout on 1.5x normal volume, only while the market is above its 200-day average, with a 5% stop loss and a sell after 40 days. Do not re-enter on every signal.",
+    "why": "The Strategy Lab survivor returned 55.09% on unseen test data over 20 trades with a worst drop of 4.0%, while Tyler's backtest on Markets lost 41.33% over 1004 trades. A fixed time exit and tighter stop should cut over-trading and fees. Only 20 trades, so this is still modest evidence.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   },
+   {
+    "id": "b6f641b1",
+    "bot": "Ryan",
+    "race": "stocks",
+    "change": "Make Ryan stricter: only buy when RSI (a 0-100 gauge of how fast the price has fallen) is lower than the current 30 trigger, and skip buys where the $5 CommSec fee is a large share of the trade.",
+    "why": "Ryan lost 14.63% on unseen test data over 101 trades, which looks like too many weak dip-buys with fees eating into small positions. Fewer, better-chosen buys is the simplest fix.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   },
+   {
+    "id": "d71acc52",
+    "bot": "Coach's Picks",
+    "race": "crypto",
+    "change": "Only pick crypto breakouts (price at a 55-day high on above-normal volume) while Bitcoin is above its 200-day average; otherwise keep saving the cash.",
+    "why": "Strategy Lab found far more survivors than luck would explain with this setup, while Coach's Picks returned 0.0% in the crypto test period and -9.43% in practice. This lets the Coach trade only the setup with evidence behind it.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "approved"
+   }
+  ]
+ },
+ {
+  "id": "c1b96319",
+  "time": "2026-10-28T07:30:39.048377+00:00",
+  "summary": "Live evidence is far too thin to judge anyone: every racer has 0 closed trades (a trade that has been bought and then sold), well under the 20 needed. The only live movement is that Nathan has made 1 crypto buy and Buy and Hold has bought in both races. So the advice below rests on the backtest (a replay of the same rules over past prices) and the Strategy Lab, and it is low to medium confidence. In the backtest's unseen test period no racer beat Buy and Hold in either race. The Strategy Lab found nothing in shares that beats Buy and Hold, but it did find crypto breakout rules that look real.",
+  "suggestions": [
+   {
+    "id": "f802e130",
+    "bot": "Tyler",
+    "race": "crypto",
+    "change": "Match the live rule exactly to the Lab's best survivor: 55-day high on 1.5x volume, only while Bitcoin is above its 200-day, with a 5% stop and a forced sale after 40 days. Keep one entry per breakout so it can't re-buy repeatedly.",
+    "why": "The Lab's rule made +55.09% over 20 test trades, but the backtested Tyler lost -41.33% over 1004 trades, which suggests the live rule trades far too often or exits differently. Aligning it should cut churn and fees.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "500902de",
+    "bot": "Ryan",
+    "race": "stocks",
+    "change": "Only buy an RSI-under-30 drop (RSI is a 0-100 gauge of how oversold a share is) when the share is still above its long-term average, so it stops buying falling shares that keep falling.",
+    "why": "Ryan lost in both backtest periods (-23.32% practice, -14.63% test) with 101 test trades, so the fault looks like the rule, not luck. A filter should mean fewer, better trades. Live evidence is 0 trades, so this is low confidence.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "96d39a0c",
+    "bot": "Nathan",
+    "race": "stocks",
+    "change": "Widen the trailing stop (a stop that follows the price up) a little and allow only one new buy per week, so it holds for weeks as intended.",
+    "why": "Nathan made 136 test trades and lost -8.48%, which looks like constant stopping out and re-buying, with a $5 fee each time. Fewer trades should mean fewer fees. Evidence is from the backtest only.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   }
+  ]
+ },
+ {
+  "id": "abcb9a23",
+  "time": "2026-10-29T07:31:10.306010+00:00",
+  "summary": "Evidence is thin: no racer has a single closed trade in either race (the rule is fewer than 20 closed trades), so live results say almost nothing yet. The backtest (a replay over past prices) is the main evidence. Its message is that no bot beat Buy and Hold on unseen test data in stocks or crypto, so the three suggestions below are low-to-medium confidence.",
+  "suggestions": [
+   {
+    "id": "f5c8343e",
+    "bot": "Tyler",
+    "race": "crypto",
+    "change": "Add the Strategy Lab's exit rules to the existing 55-day high, 1.5x volume, Bitcoin-above-200-day entry: stop loss 5% and sell after 40 days.",
+    "why": "This exact entry with those exits returned +55.1% over 20 trades in the unseen test with a worst drop (drawdown) of 4%, while Tyler's current rules lost -41.33% over 1004 trades. Exits look like the gap, but the sample is small and the backtest is only a replay.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "b1ba7002",
+    "bot": "Ryan",
+    "race": "stocks",
+    "change": "Only buy an RSI-under-30 drop (RSI measures how oversold a share is) when the share market is also above its 200-day average (a long-term trend line).",
+    "why": "Ryan lost -14.63% in the unseen test over 101 trades, -19.25 behind Buy and Hold. Buying drops in a falling market may be catching 'falling knives'. The 200-day filter helped the best crypto rules, but it is untested on Ryan, so confidence is low.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "a67f0b4b",
+    "bot": "Nathan",
+    "race": "stocks",
+    "change": "Make fewer, longer holds: tighten buying so only the strongest long-term uptrends trigger a buy, and avoid re-entering soon after a trailing-stop exit.",
+    "why": "Nathan made 136 test trades and lost -8.48%. Each CommSec trade costs $5 plus slippage (the small price lost when buying or selling), so a bot meant to hold for weeks should trade far less. Evidence is only from a backtest, so confidence is low.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   }
+  ]
+ },
+ {
+  "id": "e0f9abab",
+  "time": "2026-10-30T07:30:20.011920+00:00",
+  "summary": "Evidence is thin: almost no live trades have closed. Only Nathan in crypto has closed one (1 closed trade), so the live numbers say very little. The backtest (a replay of the rules over past prices) is the better guide. On unseen test data no racer beat Buy and Hold in either race. In crypto the Strategy Lab (the big search for rules that survive unseen data) found many survivors, while in stocks it found none. The suggestions below are low to medium confidence.",
+  "suggestions": [
+   {
+    "id": "d163af5a",
+    "bot": "Tyler",
+    "race": "crypto",
+    "change": "Make the live exit rules match the Lab's best survivor on Markets: stop 5% and sell after 40 days. Keep the 55-day high on 1.5x volume entry and the Bitcoin 200-day filter.",
+    "why": "The Lab's version made +55.1% over 20 trades with a worst drop of 4%. Tyler's backtest on Markets lost -41.33% over 1004 trades, which suggests the backtest version lacks these exits. Only 20 test trades back the Lab result, so confidence is limited.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "df9f3a04",
+    "bot": "Ryan",
+    "race": "stocks",
+    "change": "Only buy an RSI dip (a sharp fall) when the share is still above its 200-day average, and skip buys otherwise.",
+    "why": "Ryan lost -14.63% on unseen data over 101 trades, and each trade costs $5 or more in fees. Every crypto survivor the Lab found uses a 200-day filter. This is a small test and live stocks have 0 trades, so evidence is thin.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   },
+   {
+    "id": "33482114",
+    "bot": "Coach's Picks",
+    "race": "crypto",
+    "change": "Prefer picks that are 55-day high breakouts on strong volume with the market above its 200-day average, rather than only saving cash.",
+    "why": "The Coach's backtest returned 0.0% in the test period with 0 trades, so it missed the +13.7% Buy and Hold made. The Lab shows that breakout style held up on unseen data in Markets. Live evidence is nil so far.",
+    "trades": 0,
+    "confidence": "low",
+    "status": "new"
+   }
+  ]
+ }
+]
