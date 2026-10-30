@@ -1,0 +1,21 @@
+name: coach-dump
+on:
+  push:
+    branches: [coach-dump]
+    paths-ignore: ["suggestions.json"]
+permissions:
+  contents: write
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python ci/dump_suggestions.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      - run: |
+          git config user.name ci && git config user.email ci@example.com
+          git add suggestions.json && git commit -qm "coach suggestions" && git push
