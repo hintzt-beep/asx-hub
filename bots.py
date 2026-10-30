@@ -256,10 +256,13 @@ class Ryan(Bot):
         low_rsi = min(v["rsi"], rsi(v["close"].iloc[:-1]))  # oversold at yesterday's close or now
         if low_rsi >= self.STOCK_RSI or drop > -5 or v["px"] <= prev:
             return None
+        if not v["sma200"] or v["px"] <= v["sma200"]:
+            return None  # only dips in shares still above their 200-day average (no falling knives)
         stop = v["px"] * 0.92
         return {"px": v["px"], "stop": stop, "frac": 0.20, "rank": -low_rsi,
                 "reason": f"Oversold (RSI {low_rsi:.0f}, under {self.STOCK_RSI} means sold very hard): down {abs(drop):.1f}% in 5 days, and it has stopped falling "
-                          f"and ticked up (${p(v['px'])} vs ${p(prev)} last close). Mean reversion (betting a big drop bounces back) says buy now the bounce has started. "
+                          f"and ticked up (${p(v['px'])} vs ${p(prev)} last close), while still above its 200-day average (${p(v['sma200'])}, a long-term uptrend). "
+                          f"Mean reversion (betting a big drop bounces back) says buy now the bounce has started. "
                           f"Stop ${p(stop)}, selling near the 20-day average (${p(v['sma20'])})."}
 
     def exit_reason(self, pos, px, mkt):
@@ -281,9 +284,12 @@ class Nathan(Bot):
     trail = 0.08
     STOCK_TRAIL = 0.12                 # STOCKS: 12% room so normal dips don't shake him out
     STOCK_COOLDOWN = timedelta(days=14)  # STOCKS: no re-buy of a share for 2 weeks after selling it
+    STOCK_BUY_GAP = 7                  # STOCKS: at most one new buy a week
+    stocks = False
 
     def trade(self, rc, a, name, mkt, now, events):
-        self.trail = 0.08 if rc.get("crypto") else self.STOCK_TRAIL
+        self.stocks = not rc.get("crypto")
+        self.trail = self.STOCK_TRAIL if self.stocks else 0.08
         return super().trade(rc, a, name, mkt, now, events)
 
     def may_buy_ticker(self, rc, a, t, now):
@@ -296,13 +302,22 @@ class Nathan(Bot):
         rising = v["sma50"] > float(v["s50"].iloc[-11])
         if not (v["px"] > v["sma50"] > v["sma200"] and rising):
             return None
+        if self.stocks:  # only the strongest long-term uptrends: the 200-day average itself must be rising
+            c = v["close"]
+            if len(c) < 220 or v["sma200"] <= float(c.iloc[-220:-20].mean()):
+                return None
         stop = v["px"] * (1 - self.trail)
         return {"px": v["px"], "stop": stop, "frac": 0.10, "trail": self.trail, "rank": v["px"] / v["sma200"],
                 "reason": f"Trend following (riding a steady climb): ${p(v['px'])} is above the 50-day (${p(v['sma50'])}) and 200-day "
                           f"(${p(v['sma200'])}) averages and the 50-day is rising. Small position, trailing stop (rises with the price) from ${p(stop)}."}
 
-    def may_buy(self, a, now):  # trades rarely: one new name a day, five at most
-        return a.get("last_buy_day") != today(now) and len(a["positions"]) < 5
+    def may_buy(self, a, now):  # trades rarely: one new name a day (stocks: a week), five at most
+        last = a.get("last_buy_day")
+        if self.stocks and last:
+            gap = (datetime.fromisoformat(today(now)) - datetime.fromisoformat(last)).days
+            if gap < self.STOCK_BUY_GAP:
+                return False
+        return last != today(now) and len(a["positions"]) < 5
 
     def stop_reason(self, pos, px):
         return f"Trailing stop (the stop that rose with the price) hit at ${p(px)}. The climb paused, so I'm keeping what's left."

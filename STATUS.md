@@ -57,6 +57,13 @@
 
 - Coach's Picks, CRYPTO race (27 Oct evening, Coach suggestion approved): the weekly crypto candidates are now only coins whose last finished day closed above their 55-day high on 1.5x+ normal volume, and only while Bitcoin's last finished close is above its 200-day average (`coach.crypto_setups`, same rule constants as Tyler). Otherwise no crypto picks and the cash is saved, with a plain reason (Bitcoin below its 200-day / no breakout / no Bitcoin data). The AI is told the rule and suggested a ~5% stop; Python checks unchanged. The backtest's rule-based Coach estimate uses the same filter. STOCKS picks unchanged. Tests pass; `alerter.py --once`, `coach.py` and `coach.py picks` clean on the fake setup.
 
+- Coach suggestions actioned (30 Oct, Ty: "action all"). Reports 28-30 Oct had 9 new suggestions: Tyler crypto x3 and Coach's Picks crypto x1 were already live (27 Oct); new changes made:
+  - Ryan, STOCKS: also needs the share above its own 200-day average (no buying dips in long downtrends). Note: the Strategy Lab's "RSI dip in an uptrend" family on ASX shares didn't survive the unseen test either, so this is a cautious tweak, not a proven edge.
+  - Nathan, STOCKS: at most one new buy a week (was one a day), and only when the 200-day average itself is rising (above where it was 20 days earlier). 12% trail and 14-day re-buy cooldown unchanged.
+  - Coach report: now gets `changes_already_made` (approved suggestions, newest first) and is told not to repeat them or judge them on a backtest that predates them.
+  - All 9 suggestions marked approved in `system/coach_reports` so the Suggestions tab is clear.
+  Tests: Ryan (up-tick above the 200-day buys; below it skips; fee rule; crypto unchanged), Nathan (weekly limit; falling vs rising 200-day; crypto unchanged), Tyler unchanged; `alerter.py --once` and `coach.py` clean on the fake setup.
+
 ## Current task
 On hold (26 Oct, Ty's request). Gmail agent is safe to leave: nothing is scheduled, it only runs when started by hand from Actions > gmail. Note: Google app is in Testing mode, so the refresh token expires about 1 Nov; when resuming, re-run connect-gmail.bat and update GMAIL_REFRESH_TOKEN (or publish the app to Production first). Next when resumed: check the Agent/ labels, then schedule + daily summary, then spam moves (approval needed).
 

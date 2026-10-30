@@ -33,7 +33,8 @@ REPORT_SYSTEM = (
     "round numbers into new ones. With fewer than 20 closed trades the evidence is thin, so say so. If there is too little data, "
     "say that and suggest nothing. You may also get the latest backtest (a replay of the same rules over past prices, split "
     "into a practice period and an unseen test period): use it as extra evidence, trust the test period over practice, and "
-    "treat anything flagged 'probably luck (overfit)' with suspicion.")
+    "treat anything flagged 'probably luck (overfit)' with suspicion. You also get changes_already_made: rule changes already "
+    "approved and live. Don't suggest those again; the backtest may predate them, so wait for a newer backtest before judging them.")
 REPORT_SCHEMA = {
     "type": "object", "additionalProperties": False,
     "required": ["summary", "working", "not_working", "suggestions"],
@@ -132,6 +133,17 @@ def lab_brief():
     return out
 
 
+def changes_made():
+    """Approved suggestions from earlier reports (bot, race, change, when), newest first, so the Coach doesn't repeat them."""
+    try:
+        reports = get("system", "coach_reports", None) or []
+    except Exception:
+        return []
+    done = [{"bot": s["bot"], "race": s["race"], "change": s["change"], "approved_in_report": r.get("time", "")[:10]}
+            for r in reports for s in r.get("suggestions", []) if s.get("status") == "approved"]
+    return done[::-1][:12]
+
+
 def run_report(now):
     stats = {}
     for key, rc in race.RACES.items():
@@ -143,7 +155,8 @@ def run_report(now):
         return None
     report = {"id": uuid.uuid4().hex[:8], "time": now.isoformat(), "stats": stats}
     try:
-        data = ai.coach_json(REPORT_SYSTEM, {"races": stats, "rules": RULES, "backtest": backtest_brief()}, REPORT_SCHEMA)
+        data = ai.coach_json(REPORT_SYSTEM, {"races": stats, "rules": RULES, "backtest": backtest_brief(),
+                                             "changes_already_made": changes_made()}, REPORT_SCHEMA)
     except Exception as e:
         report.update(summary=f"The Coach couldn't reach the AI today ({type(e).__name__}), so there is no written report. Today's stats are saved.",
                       working=[], not_working=[], suggestions=[], ai_error=str(e)[:300])
