@@ -1,1 +1,266 @@
-{"approved": 9, "still_new": 0}
+{
+ "races": {
+  "stocks": {
+   "scorecard": 1,
+   "rows": [
+    {
+     "racer": "Buy and Hold",
+     "twr_pct": 1.41,
+     "value": 811.26,
+     "put_in": 800.0,
+     "trades": 1,
+     "closed": 0,
+     "wins": 0,
+     "holding": [
+      "VAS.AX"
+     ],
+     "last": [
+      {
+       "time": "2026-10-25T23:29:40.242086+00:00",
+       "side": "BUY",
+       "ticker": "VAS.AX",
+       "pnl": null
+      }
+     ],
+     "benched": false
+    },
+    {
+     "racer": "Ryan",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Tyler",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Nathan",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Newton",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Morpheus",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Coach's Picks",
+     "twr_pct": 0.0,
+     "value": 800.0,
+     "put_in": 800.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    }
+   ],
+   "blocks": 0,
+   "approvals": 0
+  },
+  "crypto": {
+   "scorecard": 1,
+   "rows": [
+    {
+     "racer": "Tyler",
+     "twr_pct": 0.0,
+     "value": 5400.0,
+     "put_in": 5400.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Newton",
+     "twr_pct": 0.0,
+     "value": 5400.0,
+     "put_in": 5400.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Morpheus",
+     "twr_pct": 0.0,
+     "value": 5400.0,
+     "put_in": 5400.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Coach's Picks",
+     "twr_pct": 0.0,
+     "value": 5400.0,
+     "put_in": 5400.0,
+     "trades": 0,
+     "closed": 0,
+     "wins": 0,
+     "holding": [],
+     "last": [],
+     "benched": false
+    },
+    {
+     "racer": "Ryan",
+     "twr_pct": -0.21,
+     "value": 5388.51,
+     "put_in": 5400.0,
+     "trades": 1,
+     "closed": 0,
+     "wins": 0,
+     "holding": [
+      "SOL-AUD"
+     ],
+     "last": [
+      {
+       "time": "2026-10-29T21:03:34.119721+00:00",
+       "side": "BUY",
+       "ticker": "SOL-AUD",
+       "pnl": null
+      }
+     ],
+     "benched": false
+    },
+    {
+     "racer": "Nathan",
+     "twr_pct": -0.61,
+     "value": 5367.15,
+     "put_in": 5400.0,
+     "trades": 3,
+     "closed": 1,
+     "wins": 0,
+     "holding": [
+      "BCH-AUD"
+     ],
+     "last": [
+      {
+       "time": "2026-10-27T16:30:30.658762+00:00",
+       "side": "BUY",
+       "ticker": "BNB-AUD",
+       "pnl": null
+      },
+      {
+       "time": "2026-10-29T21:03:34.119721+00:00",
+       "side": "SELL",
+       "ticker": "BNB-AUD",
+       "pnl": -38.57
+      },
+      {
+       "time": "2026-10-30T11:03:55.821264+00:00",
+       "side": "BUY",
+       "ticker": "BCH-AUD",
+       "pnl": null
+      }
+     ],
+     "benched": false
+    },
+    {
+     "racer": "Buy and Hold",
+     "twr_pct": -5.1,
+     "value": 5130.2,
+     "put_in": 5400.0,
+     "trades": 2,
+     "closed": 0,
+     "wins": 0,
+     "holding": [
+      "BTC-AUD"
+     ],
+     "last": [
+      {
+       "time": "2026-10-24T09:57:25.302525+00:00",
+       "side": "BUY",
+       "ticker": "BTC-AUD",
+       "pnl": null
+      },
+      {
+       "time": "2026-10-25T22:09:31.716430+00:00",
+       "side": "BUY",
+       "ticker": "BTC-AUD",
+       "pnl": null
+      }
+     ],
+     "benched": false
+    }
+   ],
+   "blocks": 49,
+   "approvals": 1
+  }
+ },
+ "coach": [
+  {
+   "time": "2026-10-31T07:24:24.766749+00:00",
+   "summary": "The evidence is very thin: only 1 closed trade across all racers (Nathan in crypto), far below the 20 needed, so live results say almost nothing yet. In stocks nobody but Buy and Hold has bought anything, so the others sit at $800.00 against Buy and Hold's $811.26. In crypto Buy and Hold is down (time-weighted return of -5.27%, which measures growth ignoring deposit timing), so the bots sitting in cash lead it by roughly 4.6 to 5.3 points. That is more about avoiding a falling market than skill. The backtest (replay on past prices) says no racer beat Buy and Hold on unseen data in either race, and several crypto results are flagged 'probably luck (overfit)'.",
+   "suggestions": [
+    {
+     "bot": "Ryan",
+     "race": "crypto",
+     "change": "Only buy an RSI-under-30 dip (RSI is a 0-100 gauge of how oversold a coin is) while Bitcoin is above its 200-day average (a long-term trend line), and skip buys otherwise.",
+     "status": "new"
+    },
+    {
+     "bot": "Nathan",
+     "race": "crypto",
+     "change": "Only start a new buy while Bitcoin is above its 200-day average, and wait before buying the same coin again after a stop-loss exit.",
+     "status": "new"
+    },
+    {
+     "bot": "Newton",
+     "race": "crypto",
+     "change": "Add the condition that Bitcoin must be above its 200-day average before the golden cross (a short average crossing above a longer one), volume and RSI buy signal can fire.",
+     "status": "new"
+    }
+   ]
+  }
+ ]
+}
