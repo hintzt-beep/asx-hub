@@ -1,0 +1,1692 @@
+{
+ "run": "2026-10-31T12:26:29.447970+00:00",
+ "synthetic": false,
+ "start_cash": 5000.0,
+ "rules": {
+  "practice_share": 0.7,
+  "min_trades_practice": 20,
+  "min_trades_test": 8,
+  "max_drop_pct": 35.0,
+  "luck_percentile": 95
+ },
+ "markets": {
+  "stocks": {
+   "name": "STOCKS",
+   "tickers": 30,
+   "period": {
+    "start": "2021-05-18",
+    "split": "2025-03-14",
+    "mid": "2026-01-08",
+    "end": "2026-10-30"
+   },
+   "seconds": 71,
+   "tested": 12312,
+   "fees": {
+    "commsec": {
+     "fee_name": "CommSec",
+     "buy_and_hold": {
+      "practice": 25.62,
+      "test": 18.76,
+      "test_a": 13.72,
+      "test_b": 3.27
+     },
+     "verdict": "weak",
+     "counts": {
+      "tested": 12312,
+      "passed_practice": 540,
+      "finalists": 200,
+      "beat_buy_and_hold_in_test": 12,
+      "survived": 2,
+      "expected_by_luck": 3.9
+     },
+     "survivors": [
+      {
+       "id": 10721,
+       "family": "dip",
+       "params": {
+        "drop": 5,
+        "tick": true
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": null
+       },
+       "plain": "Buy after a 5%+ drop in 10 days once the price ticks up. Exit: stop 8%, no time limit.",
+       "practice": {
+        "return_pct": 112.72,
+        "trades": 21,
+        "win_rate": 9.5,
+        "max_drop_pct": 34.8,
+        "fees": 299.95
+       },
+       "test": {
+        "return_pct": 87.9,
+        "trades": 8,
+        "win_rate": 50.0,
+        "max_drop_pct": 9.6,
+        "fees": 169.95
+       },
+       "test_vs_buy_and_hold_pct": 69.14,
+       "luck_bar_pct": 60.51399999999998
+      },
+      {
+       "id": 8840,
+       "family": "trend",
+       "params": {
+        "fast": 50,
+        "slow": 200,
+        "pull": true
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.1,
+        "trail": null,
+        "hold": null
+       },
+       "plain": "Buy when price is above the 50-day and 50-day is above the 200-day (rising), on a dip to the 20-day. Exit: stop 20%, take profit at +10%, no time limit.",
+       "practice": {
+        "return_pct": 43.65,
+        "trades": 53,
+        "win_rate": 83.0,
+        "max_drop_pct": 20.2,
+        "fees": 1030.0
+       },
+       "test": {
+        "return_pct": 44.09,
+        "trades": 44,
+        "win_rate": 84.1,
+        "max_drop_pct": 12.0,
+        "fees": 880.0
+       },
+       "test_vs_buy_and_hold_pct": 25.33,
+       "luck_bar_pct": 40.10649999999998
+      }
+     ],
+     "practice_stars_that_failed": [
+      {
+       "id": 11753,
+       "family": "dip",
+       "params": {
+        "drop": 15,
+        "tick": false
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy after a 15%+ drop in 10 days. Exit: stop 20%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 189.13,
+        "trades": 45,
+        "win_rate": 46.7,
+        "max_drop_pct": 22.6,
+        "fees": 949.75
+       },
+       "test": {
+        "return_pct": 21.08,
+        "trades": 41,
+        "win_rate": 31.7,
+        "max_drop_pct": 32.4,
+        "fees": 770.0
+       },
+       "test_vs_buy_and_hold_pct": 2.32,
+       "luck_bar_pct": 54.58449999999995
+      },
+      {
+       "id": 11726,
+       "family": "dip",
+       "params": {
+        "drop": 15,
+        "tick": false
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy after a 15%+ drop in 10 days. Exit: stop 12%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 153.85,
+        "trades": 57,
+        "win_rate": 40.4,
+        "max_drop_pct": 23.9,
+        "fees": 1179.8
+       },
+       "test": {
+        "return_pct": -35.68,
+        "trades": 54,
+        "win_rate": 22.2,
+        "max_drop_pct": 44.1,
+        "fees": 830.0
+       },
+       "test_vs_buy_and_hold_pct": -54.44,
+       "luck_bar_pct": 41.98949999999997
+      },
+      {
+       "id": 6560,
+       "family": "oversold",
+       "params": {
+        "rsi": 35,
+        "tick": false,
+        "trend": false
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.12,
+        "target": 0.25,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy when RSI is under 35. Exit: stop 12%, take profit at +25%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 144.36,
+        "trades": 56,
+        "win_rate": 55.4,
+        "max_drop_pct": 12.9,
+        "fees": 1164.75
+       },
+       "test": {
+        "return_pct": 11.51,
+        "trades": 33,
+        "win_rate": 42.4,
+        "max_drop_pct": 13.1,
+        "fees": 635.0
+       },
+       "test_vs_buy_and_hold_pct": -7.25,
+       "luck_bar_pct": 28.02699999999996
+      },
+      {
+       "id": 11645,
+       "family": "dip",
+       "params": {
+        "drop": 10,
+        "tick": true
+       },
+       "regime": "btc",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy after a 10%+ drop in 10 days once the price ticks up, only when Bitcoin is above its 200-day average. Exit: stop 20%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 134.6,
+        "trades": 39,
+        "win_rate": 48.7,
+        "max_drop_pct": 32.3,
+        "fees": 804.85
+       },
+       "test": {
+        "return_pct": 74.81,
+        "trades": 16,
+        "win_rate": 56.2,
+        "max_drop_pct": 9.7,
+        "fees": 295.0
+       },
+       "test_vs_buy_and_hold_pct": 56.05,
+       "luck_bar_pct": 54.03099999999999
+      },
+      {
+       "id": 11618,
+       "family": "dip",
+       "params": {
+        "drop": 10,
+        "tick": true
+       },
+       "regime": "btc",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy after a 10%+ drop in 10 days once the price ticks up, only when Bitcoin is above its 200-day average. Exit: stop 12%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 126.74,
+        "trades": 41,
+        "win_rate": 41.5,
+        "max_drop_pct": 23.0,
+        "fees": 834.9
+       },
+       "test": {
+        "return_pct": 20.93,
+        "trades": 21,
+        "win_rate": 38.1,
+        "max_drop_pct": 12.5,
+        "fees": 405.0
+       },
+       "test_vs_buy_and_hold_pct": 2.17,
+       "luck_bar_pct": 56.22599999999999
+      }
+     ],
+     "best_by_family": {
+      "breakout": {
+       "test_return_pct": 99.16,
+       "plain": "Buy a 20-day high breakout. Exit: stop 12%, trailing stop 20%, no time limit."
+      },
+      "oversold": {
+       "test_return_pct": 98.8,
+       "plain": "Buy when RSI is under 35. Exit: stop 20%, no time limit."
+      },
+      "trend": {
+       "test_return_pct": 59.34,
+       "plain": "Buy when price is above the 20-day and 20-day is above the 50-day (rising). Exit: stop 20%, trailing stop 20%, no time limit."
+      },
+      "cross": {
+       "test_return_pct": 77.85,
+       "plain": "Buy a fresh golden cross (20-day over the 50-day) and RSI 50-70, only when the market is above its 200-day average. Exit: stop 20%, sell after 40 days."
+      },
+      "dip": {
+       "test_return_pct": 110.82,
+       "plain": "Buy after a 10%+ drop in 10 days, only when Bitcoin is above its 200-day average. Exit: stop 12%, trailing stop 20%, no time limit."
+      }
+     }
+    }
+   }
+  },
+  "crypto": {
+   "name": "CRYPTO",
+   "tickers": 12,
+   "period": {
+    "start": "2021-05-19",
+    "split": "2025-03-13",
+    "mid": "2026-01-06",
+    "end": "2026-10-31"
+   },
+   "seconds": 58,
+   "tested": 8208,
+   "fees": {
+    "markets": {
+     "fee_name": "CoinSpot Markets 0.1%",
+     "buy_and_hold": {
+      "practice": 136.3,
+      "test": -16.66,
+      "test_a": 5.18,
+      "test_b": -21.05
+     },
+     "verdict": "promising",
+     "counts": {
+      "tested": 8208,
+      "passed_practice": 429,
+      "finalists": 200,
+      "beat_buy_and_hold_in_test": 112,
+      "survived": 89,
+      "expected_by_luck": 8.0
+     },
+     "survivors": [
+      {
+       "id": 2053,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.05,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 5%, sell after 40 days.",
+       "practice": {
+        "return_pct": 425.57,
+        "trades": 75,
+        "win_rate": 26.7,
+        "max_drop_pct": 28.7,
+        "fees": 405.91
+       },
+       "test": {
+        "return_pct": 55.09,
+        "trades": 20,
+        "win_rate": 50.0,
+        "max_drop_pct": 4.0,
+        "fees": 57.26
+       },
+       "test_vs_buy_and_hold_pct": 71.75,
+       "luck_bar_pct": 10.905499999999988
+      },
+      {
+       "id": 2059,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.05,
+        "target": null,
+        "trail": 0.2,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 5%, trailing stop 20%, sell after 40 days.",
+       "practice": {
+        "return_pct": 278.51,
+        "trades": 87,
+        "win_rate": 26.4,
+        "max_drop_pct": 28.9,
+        "fees": 436.65
+       },
+       "test": {
+        "return_pct": 42.7,
+        "trades": 23,
+        "win_rate": 43.5,
+        "max_drop_pct": 4.0,
+        "fees": 64.69
+       },
+       "test_vs_buy_and_hold_pct": 59.36,
+       "luck_bar_pct": 20.685499999999987
+      },
+      {
+       "id": 2322,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 10 days.",
+       "practice": {
+        "return_pct": 297.64,
+        "trades": 90,
+        "win_rate": 47.8,
+        "max_drop_pct": 27.0,
+        "fees": 507.99
+       },
+       "test": {
+        "return_pct": 41.5,
+        "trades": 22,
+        "win_rate": 77.3,
+        "max_drop_pct": 3.1,
+        "fees": 65.44
+       },
+       "test_vs_buy_and_hold_pct": 58.16,
+       "luck_bar_pct": 15.163999999999993
+      },
+      {
+       "id": 2367,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.25,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days.",
+       "practice": {
+        "return_pct": 274.77,
+        "trades": 98,
+        "win_rate": 59.2,
+        "max_drop_pct": 20.3,
+        "fees": 527.29
+       },
+       "test": {
+        "return_pct": 40.9,
+        "trades": 23,
+        "win_rate": 73.9,
+        "max_drop_pct": 5.1,
+        "fees": 67.46
+       },
+       "test_vs_buy_and_hold_pct": 57.56,
+       "luck_bar_pct": 10.532499999999988
+      },
+      {
+       "id": 2373,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.25,
+        "trail": 0.2,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, trailing stop 20%, sell after 10 days.",
+       "practice": {
+        "return_pct": 239.71,
+        "trades": 98,
+        "win_rate": 53.1,
+        "max_drop_pct": 17.7,
+        "fees": 513.29
+       },
+       "test": {
+        "return_pct": 39.54,
+        "trades": 23,
+        "win_rate": 69.6,
+        "max_drop_pct": 4.7,
+        "fees": 67.42
+       },
+       "test_vs_buy_and_hold_pct": 56.2,
+       "luck_bar_pct": 9.111499999999946
+      },
+      {
+       "id": 2151,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.25,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days.",
+       "practice": {
+        "return_pct": 327.75,
+        "trades": 121,
+        "win_rate": 58.7,
+        "max_drop_pct": 20.8,
+        "fees": 637.66
+       },
+       "test": {
+        "return_pct": 41.09,
+        "trades": 31,
+        "win_rate": 67.7,
+        "max_drop_pct": 5.3,
+        "fees": 93.7
+       },
+       "test_vs_buy_and_hold_pct": 57.75,
+       "luck_bar_pct": 6.696499999999998
+      },
+      {
+       "id": 2080,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 532.91,
+        "trades": 58,
+        "win_rate": 39.7,
+        "max_drop_pct": 15.4,
+        "fees": 366.21
+       },
+       "test": {
+        "return_pct": 46.26,
+        "trades": 20,
+        "win_rate": 50.0,
+        "max_drop_pct": 6.1,
+        "fees": 55.27
+       },
+       "test_vs_buy_and_hold_pct": 62.92,
+       "luck_bar_pct": 24.401499999999977
+      },
+      {
+       "id": 2349,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, sell after 10 days.",
+       "practice": {
+        "return_pct": 335.36,
+        "trades": 87,
+        "win_rate": 54.0,
+        "max_drop_pct": 24.1,
+        "fees": 549.11
+       },
+       "test": {
+        "return_pct": 38.59,
+        "trades": 22,
+        "win_rate": 77.3,
+        "max_drop_pct": 5.1,
+        "fees": 64.71
+       },
+       "test_vs_buy_and_hold_pct": 55.25,
+       "luck_bar_pct": 21.656499999999962
+      },
+      {
+       "id": 2187,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume. Exit: stop 8%, sell after 10 days.",
+       "practice": {
+        "return_pct": 270.19,
+        "trades": 106,
+        "win_rate": 37.7,
+        "max_drop_pct": 21.8,
+        "fees": 630.93
+       },
+       "test": {
+        "return_pct": 36.8,
+        "trades": 23,
+        "win_rate": 69.6,
+        "max_drop_pct": 4.1,
+        "fees": 66.66
+       },
+       "test_vs_buy_and_hold_pct": 53.46,
+       "luck_bar_pct": 16.246
+      },
+      {
+       "id": 1864,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 0
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout, only when the market is above its 200-day average. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 614.27,
+        "trades": 64,
+        "win_rate": 43.8,
+        "max_drop_pct": 15.3,
+        "fees": 479.03
+       },
+       "test": {
+        "return_pct": 45.28,
+        "trades": 22,
+        "win_rate": 50.0,
+        "max_drop_pct": 6.2,
+        "fees": 62.79
+       },
+       "test_vs_buy_and_hold_pct": 61.94,
+       "luck_bar_pct": 14.57849999999999
+      },
+      {
+       "id": 2355,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": 0.2,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, trailing stop 20%, sell after 10 days.",
+       "practice": {
+        "return_pct": 261.05,
+        "trades": 87,
+        "win_rate": 48.3,
+        "max_drop_pct": 17.4,
+        "fees": 529.95
+       },
+       "test": {
+        "return_pct": 36.34,
+        "trades": 22,
+        "win_rate": 72.7,
+        "max_drop_pct": 4.7,
+        "fees": 64.44
+       },
+       "test_vs_buy_and_hold_pct": 53.0,
+       "luck_bar_pct": 7.472499999999956
+      },
+      {
+       "id": 2341,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": 0.25,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, take profit at +25%, sell after 40 days.",
+       "practice": {
+        "return_pct": 297.96,
+        "trades": 89,
+        "win_rate": 56.2,
+        "max_drop_pct": 19.9,
+        "fees": 531.1
+       },
+       "test": {
+        "return_pct": 44.46,
+        "trades": 18,
+        "win_rate": 61.1,
+        "max_drop_pct": 6.2,
+        "fees": 52.74
+       },
+       "test_vs_buy_and_hold_pct": 61.12,
+       "luck_bar_pct": 15.866999999999997
+      },
+      {
+       "id": 2113,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": 0.2,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, trailing stop 20%, sell after 40 days.",
+       "practice": {
+        "return_pct": 309.16,
+        "trades": 64,
+        "win_rate": 45.3,
+        "max_drop_pct": 17.4,
+        "fees": 421.6
+       },
+       "test": {
+        "return_pct": 39.34,
+        "trades": 20,
+        "win_rate": 55.0,
+        "max_drop_pct": 5.5,
+        "fees": 57.57
+       },
+       "test_vs_buy_and_hold_pct": 56.0,
+       "luck_bar_pct": 34.66099999999997
+      },
+      {
+       "id": 2107,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 511.08,
+        "trades": 51,
+        "win_rate": 49.0,
+        "max_drop_pct": 14.1,
+        "fees": 384.87
+       },
+       "test": {
+        "return_pct": 48.61,
+        "trades": 18,
+        "win_rate": 61.1,
+        "max_drop_pct": 7.1,
+        "fees": 52.22
+       },
+       "test_vs_buy_and_hold_pct": 65.27,
+       "luck_bar_pct": 12.908499999999997
+      },
+      {
+       "id": 2232,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.12,
+        "target": 0.25,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume. Exit: stop 12%, take profit at +25%, sell after 10 days.",
+       "practice": {
+        "return_pct": 262.07,
+        "trades": 114,
+        "win_rate": 53.5,
+        "max_drop_pct": 18.9,
+        "fees": 602.79
+       },
+       "test": {
+        "return_pct": 41.65,
+        "trades": 25,
+        "win_rate": 68.0,
+        "max_drop_pct": 6.1,
+        "fees": 73.46
+       },
+       "test_vs_buy_and_hold_pct": 58.31,
+       "luck_bar_pct": 20.572
+      }
+     ],
+     "practice_stars_that_failed": [
+      {
+       "id": 5320,
+       "family": "trend",
+       "params": {
+        "fast": 20,
+        "slow": 50,
+        "pull": false
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy when price is above the 20-day and 20-day is above the 50-day (rising), only when the market is above its 200-day average. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 682.68,
+        "trades": 113,
+        "win_rate": 29.2,
+        "max_drop_pct": 30.1,
+        "fees": 977.58
+       },
+       "test": {
+        "return_pct": -13.89,
+        "trades": 40,
+        "win_rate": 22.5,
+        "max_drop_pct": 27.9,
+        "fees": 95.53
+       },
+       "test_vs_buy_and_hold_pct": 2.77,
+       "luck_bar_pct": -2.6635000000000204
+      },
+      {
+       "id": 6211,
+       "family": "cross",
+       "params": {
+        "vol": false,
+        "band": false
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a fresh golden cross (20-day over the 50-day), only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 646.43,
+        "trades": 60,
+        "win_rate": 46.7,
+        "max_drop_pct": 32.4,
+        "fees": 630.41
+       },
+       "test": {
+        "return_pct": 27.82,
+        "trades": 22,
+        "win_rate": 45.5,
+        "max_drop_pct": 17.5,
+        "fees": 54.9
+       },
+       "test_vs_buy_and_hold_pct": 44.48,
+       "luck_bar_pct": 7.551499999999989
+      },
+      {
+       "id": 595,
+       "family": "breakout",
+       "params": {
+        "n": 10,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 10-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 645.32,
+        "trades": 68,
+        "win_rate": 39.7,
+        "max_drop_pct": 24.6,
+        "fees": 650.57
+       },
+       "test": {
+        "return_pct": 21.45,
+        "trades": 17,
+        "win_rate": 52.9,
+        "max_drop_pct": 15.1,
+        "fees": 43.91
+       },
+       "test_vs_buy_and_hold_pct": 38.11,
+       "luck_bar_pct": 8.750499999999986
+      },
+      {
+       "id": 1540,
+       "family": "breakout",
+       "params": {
+        "n": 20,
+        "vol": 3
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 20-day high breakout on 3x+ normal volume. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 621.77,
+        "trades": 56,
+        "win_rate": 39.3,
+        "max_drop_pct": 15.3,
+        "fees": 462.34
+       },
+       "test": {
+        "return_pct": 24.85,
+        "trades": 13,
+        "win_rate": 53.8,
+        "max_drop_pct": 8.8,
+        "fees": 34.1
+       },
+       "test_vs_buy_and_hold_pct": 41.51,
+       "luck_bar_pct": 10.955499999999969
+      },
+      {
+       "id": 676,
+       "family": "breakout",
+       "params": {
+        "n": 10,
+        "vol": 3
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 10-day high breakout on 3x+ normal volume. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 607.51,
+        "trades": 58,
+        "win_rate": 37.9,
+        "max_drop_pct": 17.8,
+        "fees": 461.55
+       },
+       "test": {
+        "return_pct": 29.31,
+        "trades": 13,
+        "win_rate": 53.8,
+        "max_drop_pct": 8.8,
+        "fees": 34.33
+       },
+       "test_vs_buy_and_hold_pct": 45.97,
+       "luck_bar_pct": 24.543499999999995
+      }
+     ],
+     "best_by_family": {
+      "breakout": {
+       "test_return_pct": 68.6,
+       "plain": "Buy a 10-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 5%, take profit at +25%, trailing stop 20%, sell after 10 days."
+      },
+      "oversold": {
+       "test_return_pct": 29.33,
+       "plain": "Buy when RSI is under 35, only when the market is above its 200-day average. Exit: stop 20%, take profit at +10%, sell after 40 days."
+      },
+      "trend": {
+       "test_return_pct": 53.28,
+       "plain": "Buy when price is above the 20-day and 20-day is above the 50-day (rising), only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days."
+      },
+      "cross": {
+       "test_return_pct": 45.71,
+       "plain": "Buy a fresh golden cross (20-day over the 50-day), only when the market is above its 200-day average. Exit: stop 5%, take profit at +25%, no time limit."
+      },
+      "dip": {
+       "test_return_pct": 40.02,
+       "plain": "Buy after a 10%+ drop in 10 days once the price ticks up, only when the market is above its 200-day average. Exit: stop 20%, take profit at +10%, trailing stop 20%, sell after 10 days."
+      }
+     }
+    },
+    "instant": {
+     "fee_name": "CoinSpot Instant 1%",
+     "buy_and_hold": {
+      "practice": 133.31,
+      "test": -18.28,
+      "test_a": 3.37,
+      "test_b": -22.63
+     },
+     "verdict": "promising",
+     "counts": {
+      "tested": 8208,
+      "passed_practice": 155,
+      "finalists": 155,
+      "beat_buy_and_hold_in_test": 61,
+      "survived": 54,
+      "expected_by_luck": 4.4
+     },
+     "survivors": [
+      {
+       "id": 2322,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 10 days.",
+       "practice": {
+        "return_pct": 168.04,
+        "trades": 90,
+        "win_rate": 42.2,
+        "max_drop_pct": 33.9,
+        "fees": 4029.77
+       },
+       "test": {
+        "return_pct": 28.21,
+        "trades": 22,
+        "win_rate": 77.3,
+        "max_drop_pct": 3.5,
+        "fees": 622.21
+       },
+       "test_vs_buy_and_hold_pct": 46.49,
+       "luck_bar_pct": -3.014500000000006
+      },
+      {
+       "id": 2367,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.25,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days.",
+       "practice": {
+        "return_pct": 142.22,
+        "trades": 98,
+        "win_rate": 53.1,
+        "max_drop_pct": 27.0,
+        "fees": 4095.08
+       },
+       "test": {
+        "return_pct": 27.12,
+        "trades": 23,
+        "win_rate": 73.9,
+        "max_drop_pct": 5.5,
+        "fees": 641.35
+       },
+       "test_vs_buy_and_hold_pct": 45.4,
+       "luck_bar_pct": -11.853500000000029
+      },
+      {
+       "id": 6677,
+       "family": "cross",
+       "params": {
+        "vol": true,
+        "band": false
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": 0.2,
+        "hold": null
+       },
+       "plain": "Buy a fresh golden cross (20-day over the 50-day) with rising volume, only when the market is above its 200-day average. Exit: stop 20%, trailing stop 20%, no time limit.",
+       "practice": {
+        "return_pct": 260.95,
+        "trades": 46,
+        "win_rate": 47.8,
+        "max_drop_pct": 34.0,
+        "fees": 2692.15
+       },
+       "test": {
+        "return_pct": 24.42,
+        "trades": 10,
+        "win_rate": 60.0,
+        "max_drop_pct": 2.8,
+        "fees": 283.35
+       },
+       "test_vs_buy_and_hold_pct": 42.7,
+       "luck_bar_pct": 4.728999999999998
+      },
+      {
+       "id": 2341,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": 0.25,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, take profit at +25%, sell after 40 days.",
+       "practice": {
+        "return_pct": 171.61,
+        "trades": 89,
+        "win_rate": 55.1,
+        "max_drop_pct": 24.9,
+        "fees": 4230.45
+       },
+       "test": {
+        "return_pct": 33.37,
+        "trades": 18,
+        "win_rate": 61.1,
+        "max_drop_pct": 7.0,
+        "fees": 507.4
+       },
+       "test_vs_buy_and_hold_pct": 51.65,
+       "luck_bar_pct": -4.133000000000002
+      },
+      {
+       "id": 2080,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 393.21,
+        "trades": 58,
+        "win_rate": 37.9,
+        "max_drop_pct": 22.8,
+        "fees": 3150.01
+       },
+       "test": {
+        "return_pct": 34.26,
+        "trades": 20,
+        "win_rate": 50.0,
+        "max_drop_pct": 7.3,
+        "fees": 530.51
+       },
+       "test_vs_buy_and_hold_pct": 52.54,
+       "luck_bar_pct": -1.7245000000000348
+      },
+      {
+       "id": 2187,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume. Exit: stop 8%, sell after 10 days.",
+       "practice": {
+        "return_pct": 133.37,
+        "trades": 106,
+        "win_rate": 35.8,
+        "max_drop_pct": 25.9,
+        "fees": 4793.78
+       },
+       "test": {
+        "return_pct": 23.44,
+        "trades": 23,
+        "win_rate": 69.6,
+        "max_drop_pct": 5.0,
+        "fees": 632.6
+       },
+       "test_vs_buy_and_hold_pct": 41.72,
+       "luck_bar_pct": -6.773500000000006
+      },
+      {
+       "id": 2349,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, sell after 10 days.",
+       "practice": {
+        "return_pct": 196.88,
+        "trades": 87,
+        "win_rate": 48.3,
+        "max_drop_pct": 30.9,
+        "fees": 4368.26
+       },
+       "test": {
+        "return_pct": 25.59,
+        "trades": 22,
+        "win_rate": 77.3,
+        "max_drop_pct": 5.5,
+        "fees": 615.44
+       },
+       "test_vs_buy_and_hold_pct": 43.87,
+       "luck_bar_pct": -5.536500000000026
+      },
+      {
+       "id": 2355,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": null,
+        "trail": 0.2,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, trailing stop 20%, sell after 10 days.",
+       "practice": {
+        "return_pct": 145.92,
+        "trades": 87,
+        "win_rate": 41.4,
+        "max_drop_pct": 23.0,
+        "fees": 4249.45
+       },
+       "test": {
+        "return_pct": 23.55,
+        "trades": 22,
+        "win_rate": 72.7,
+        "max_drop_pct": 5.1,
+        "fees": 612.94
+       },
+       "test_vs_buy_and_hold_pct": 41.83,
+       "luck_bar_pct": -10.19400000000004
+      },
+      {
+       "id": 2323,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 302.98,
+        "trades": 54,
+        "win_rate": 38.9,
+        "max_drop_pct": 18.6,
+        "fees": 3052.51
+       },
+       "test": {
+        "return_pct": 30.7,
+        "trades": 15,
+        "win_rate": 66.7,
+        "max_drop_pct": 7.0,
+        "fees": 408.56
+       },
+       "test_vs_buy_and_hold_pct": 48.98,
+       "luck_bar_pct": 4.313999999999996
+      },
+      {
+       "id": 2329,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": 0.2,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, trailing stop 20%, sell after 40 days.",
+       "practice": {
+        "return_pct": 167.66,
+        "trades": 63,
+        "win_rate": 41.3,
+        "max_drop_pct": 20.9,
+        "fees": 3254.98
+       },
+       "test": {
+        "return_pct": 23.78,
+        "trades": 17,
+        "win_rate": 52.9,
+        "max_drop_pct": 5.5,
+        "fees": 462.79
+       },
+       "test_vs_buy_and_hold_pct": 42.06,
+       "luck_bar_pct": -9.46800000000001
+      },
+      {
+       "id": 2107,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 389.95,
+        "trades": 51,
+        "win_rate": 47.1,
+        "max_drop_pct": 15.9,
+        "fees": 3377.79
+       },
+       "test": {
+        "return_pct": 37.53,
+        "trades": 18,
+        "win_rate": 61.1,
+        "max_drop_pct": 9.0,
+        "fees": 502.64
+       },
+       "test_vs_buy_and_hold_pct": 55.81,
+       "luck_bar_pct": -7.1455000000000135
+      },
+      {
+       "id": 2214,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 2
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 2x+ normal volume. Exit: stop 12%, sell after 10 days.",
+       "practice": {
+        "return_pct": 223.09,
+        "trades": 100,
+        "win_rate": 45.0,
+        "max_drop_pct": 22.0,
+        "fees": 5211.92
+       },
+       "test": {
+        "return_pct": 27.53,
+        "trades": 23,
+        "win_rate": 73.9,
+        "max_drop_pct": 6.9,
+        "fees": 645.92
+       },
+       "test_vs_buy_and_hold_pct": 45.81,
+       "luck_bar_pct": -13.427000000000001
+      },
+      {
+       "id": 2151,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.2,
+        "target": 0.25,
+        "trail": null,
+        "hold": 10
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days.",
+       "practice": {
+        "return_pct": 150.05,
+        "trades": 121,
+        "win_rate": 51.2,
+        "max_drop_pct": 30.3,
+        "fees": 4659.65
+       },
+       "test": {
+        "return_pct": 22.92,
+        "trades": 31,
+        "win_rate": 67.7,
+        "max_drop_pct": 6.1,
+        "fees": 874.94
+       },
+       "test_vs_buy_and_hold_pct": 41.2,
+       "luck_bar_pct": -14.7535
+      },
+      {
+       "id": 1864,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 0
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout, only when the market is above its 200-day average. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 442.39,
+        "trades": 64,
+        "win_rate": 43.8,
+        "max_drop_pct": 18.2,
+        "fees": 4054.59
+       },
+       "test": {
+        "return_pct": 32.03,
+        "trades": 22,
+        "win_rate": 50.0,
+        "max_drop_pct": 8.6,
+        "fees": 599.75
+       },
+       "test_vs_buy_and_hold_pct": 50.31,
+       "luck_bar_pct": -7.071000000000001
+      },
+      {
+       "id": 2113,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 1.5
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": 0.2,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, trailing stop 20%, sell after 40 days.",
+       "practice": {
+        "return_pct": 210.26,
+        "trades": 64,
+        "win_rate": 42.2,
+        "max_drop_pct": 20.1,
+        "fees": 3586.75
+       },
+       "test": {
+        "return_pct": 27.98,
+        "trades": 20,
+        "win_rate": 50.0,
+        "max_drop_pct": 7.6,
+        "fees": 551.74
+       },
+       "test_vs_buy_and_hold_pct": 46.26,
+       "luck_bar_pct": 11.825999999999985
+      }
+     ],
+     "practice_stars_that_failed": [
+      {
+       "id": 1540,
+       "family": "breakout",
+       "params": {
+        "n": 20,
+        "vol": 3
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 20-day high breakout on 3x+ normal volume. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 464.2,
+        "trades": 56,
+        "win_rate": 39.3,
+        "max_drop_pct": 18.3,
+        "fees": 3951.54
+       },
+       "test": {
+        "return_pct": 17.99,
+        "trades": 13,
+        "win_rate": 53.8,
+        "max_drop_pct": 10.7,
+        "fees": 331.73
+       },
+       "test_vs_buy_and_hold_pct": 36.27,
+       "luck_bar_pct": -1.5285000000000222
+      },
+      {
+       "id": 595,
+       "family": "breakout",
+       "params": {
+        "n": 10,
+        "vol": 2
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 10-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 459.37,
+        "trades": 68,
+        "win_rate": 38.2,
+        "max_drop_pct": 27.5,
+        "fees": 5439.24
+       },
+       "test": {
+        "return_pct": 12.17,
+        "trades": 17,
+        "win_rate": 52.9,
+        "max_drop_pct": 16.9,
+        "fees": 421.85
+       },
+       "test_vs_buy_and_hold_pct": 30.45,
+       "luck_bar_pct": -11.93250000000001
+      },
+      {
+       "id": 2404,
+       "family": "breakout",
+       "params": {
+        "n": 55,
+        "vol": 3
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 55-day high breakout on 3x+ normal volume. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 455.55,
+        "trades": 40,
+        "win_rate": 47.5,
+        "max_drop_pct": 16.6,
+        "fees": 2626.57
+       },
+       "test": {
+        "return_pct": -6.39,
+        "trades": 11,
+        "win_rate": 27.3,
+        "max_drop_pct": 11.3,
+        "fees": 256.36
+       },
+       "test_vs_buy_and_hold_pct": 11.89,
+       "luck_bar_pct": 9.728499999999986
+      },
+      {
+       "id": 6643,
+       "family": "cross",
+       "params": {
+        "vol": true,
+        "band": false
+       },
+       "regime": "own",
+       "exit": {
+        "stop": 0.12,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a fresh golden cross (20-day over the 50-day) with rising volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 40 days.",
+       "practice": {
+        "return_pct": 453.15,
+        "trades": 56,
+        "win_rate": 44.6,
+        "max_drop_pct": 28.6,
+        "fees": 4585.56
+       },
+       "test": {
+        "return_pct": 6.33,
+        "trades": 19,
+        "win_rate": 42.1,
+        "max_drop_pct": 19.7,
+        "fees": 460.38
+       },
+       "test_vs_buy_and_hold_pct": 24.61,
+       "luck_bar_pct": -13.617000000000012
+      },
+      {
+       "id": 676,
+       "family": "breakout",
+       "params": {
+        "n": 10,
+        "vol": 3
+       },
+       "regime": "",
+       "exit": {
+        "stop": 0.08,
+        "target": null,
+        "trail": null,
+        "hold": 40
+       },
+       "plain": "Buy a 10-day high breakout on 3x+ normal volume. Exit: stop 8%, sell after 40 days.",
+       "practice": {
+        "return_pct": 448.29,
+        "trades": 58,
+        "win_rate": 37.9,
+        "max_drop_pct": 22.4,
+        "fees": 3922.96
+       },
+       "test": {
+        "return_pct": 22.25,
+        "trades": 13,
+        "win_rate": 53.8,
+        "max_drop_pct": 10.7,
+        "fees": 333.89
+       },
+       "test_vs_buy_and_hold_pct": 40.53,
+       "luck_bar_pct": 9.529999999999994
+      }
+     ],
+     "best_by_family": {
+      "breakout": {
+       "test_return_pct": 42.4,
+       "plain": "Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 5%, sell after 40 days."
+      },
+      "oversold": {
+       "test_return_pct": 17.97,
+       "plain": "Buy when RSI is under 30, only when the market is above its 200-day average. Exit: stop 12%, take profit at +10%, sell after 40 days."
+      },
+      "trend": {
+       "test_return_pct": 19.18,
+       "plain": "Buy when price is above the 20-day and 20-day is above the 50-day (rising), on a dip to the 20-day, only when the market is above its 200-day average. Exit: stop 20%, trailing stop 20%, sell after 10 days."
+      },
+      "cross": {
+       "test_return_pct": 33.6,
+       "plain": "Buy a fresh golden cross (20-day over the 50-day) with rising volume, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, trailing stop 20%, no time limit."
+      },
+      "dip": {
+       "test_return_pct": 16.91,
+       "plain": "Buy after a 15%+ drop in 10 days, only when the market is above its 200-day average. Exit: stop 20%, take profit at +25%, sell after 10 days."
+      }
+     }
+    }
+   }
+  }
+ },
+ "summary": [
+  "STOCKS (CommSec): tested 12,312; 540 beat Buy and Hold in practice; 2 of the top 200 also won on unseen data, in both halves, and beat the luck test (luck alone would give about 3.9). Buy and Hold made +18.8% in the test period.",
+  "  Some survivors, but not clearly more than luck could give. Treat with suspicion.",
+  "  Best: Buy after a 5%+ drop in 10 days once the price ticks up. Exit: stop 8%, no time limit. Test +87.9% over 8 trades, worst drop 10%.",
+  "CRYPTO (CoinSpot Markets 0.1%): tested 8,208; 429 beat Buy and Hold in practice; 89 of the top 200 also won on unseen data, in both halves, and beat the luck test (luck alone would give about 8). Buy and Hold made -16.7% in the test period.",
+  "  Far more survivors than luck explains. Worth paper-trading the best ones live.",
+  "  Best: Buy a 55-day high breakout on 1.5x+ normal volume, only when the market is above its 200-day average. Exit: stop 5%, sell after 40 days. Test +55.1% over 20 trades, worst drop 4%.",
+  "CRYPTO (CoinSpot Instant 1%): tested 8,208; 155 beat Buy and Hold in practice; 54 of the top 155 also won on unseen data, in both halves, and beat the luck test (luck alone would give about 4.4). Buy and Hold made -18.3% in the test period.",
+  "  Far more survivors than luck explains. Worth paper-trading the best ones live.",
+  "  Best: Buy a 55-day high breakout on 2x+ normal volume, only when the market is above its 200-day average. Exit: stop 12%, sell after 10 days. Test +28.2% over 22 trades, worst drop 4%."
+ ]
+}
